@@ -1,7 +1,7 @@
 // Where creatures walk: a distance-to-Core field over the grid, recomputed a few times a second so
 // painted walls, lava and storms bend the routes. Earth is passable only at a heavy price (the
 // creature has to gnaw through), so a wall makes them take the long way when there is one.
-import { COLS, CORE, ROWS } from './config.js';
+import { COLS, CORE } from './config.js';
 import { CELLS, inGrid } from './grid.js';
 import { CHARGED, CLOUD, EARTH, EMPTY, FIRE, ICE, LAVA, STORM } from './elements.js';
 
@@ -10,10 +10,10 @@ const queue = new Int32Array(CELLS * 8);
 const queued = new Uint8Array(CELLS);
 
 /** What it costs a walker to stand in a cell of this type. */
-function stepCost(type) {
+function stepCost(type, bold) {
   if (type === EMPTY) return 1;
   if (type === EARTH) return 9;
-  if (type === LAVA || type === FIRE || type === CHARGED || type === STORM) return 4;
+  if (type === LAVA || type === FIRE || type === CHARGED || type === STORM) return bold ? 1 : 2.5;
   if (type === ICE || type === CLOUD) return 2;
   return 1;
 }
@@ -22,8 +22,11 @@ export function createFlow() {
   return new Float32Array(CELLS).fill(UNREACHED);
 }
 
-/** Fill `flow` with the cheapest walking cost from every cell to the Core. */
-export function computeFlow(flow, grid) {
+/**
+ * Fill `flow` with the cheapest walking cost from every cell to the Core. When `bold` is set
+ * (a rift has dragged on) creatures stop detouring around fire, lava and storm.
+ */
+export function computeFlow(flow, grid, bold = false) {
   flow.fill(UNREACHED);
   queued.fill(0);
   let head = 0;
@@ -47,7 +50,7 @@ export function computeFlow(flow, grid) {
       if (j < 0 || j >= CELLS) continue;
       if (d === 0 && col === COLS - 1) continue;
       if (d === 1 && col === 0) continue;
-      const nd = flow[i] + stepCost(grid.type[j]);
+      const nd = flow[i] + stepCost(grid.type[j], bold);
       if (nd < flow[j]) {
         flow[j] = nd;
         if (!queued[j]) {

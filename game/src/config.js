@@ -23,7 +23,7 @@ export const GATES = {
   S: { col: 24, row: 29, name: 'SOUTH' },
 };
 
-export const ESSENCE = { max: 100, regen: 5.5, perCell: 1.0, refreshCost: 0.4 };
+export const ESSENCE = { max: 100, regen: 7, perCell: 1.0, refreshCost: 0.4 };
 export const BRUSH = { radius: 1.15, spacing: 0.7 };
 /** Reactions run on a fixed tick; a chain survives this long without a new reaction. */
 export const REACT = { interval: 0.25, chainWindow: 2.6 };

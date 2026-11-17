@@ -112,6 +112,7 @@ function stageCover(seed) {
     game.boss.plates = 2;
     game.boss.exposed = 0;
     game.boss.hp = Math.round(game.boss.maxHp * 0.58);
+    game.boss.flash = 0;
   }
   game.brush = 3;
   setCursor(game, toScreenX(bx + 12), toScreenY(by + 12), false);
@@ -156,18 +157,29 @@ function stageBoon(seed) {
 function stageWin(seed) {
   const game = createGame(seed);
   const bot = createBot();
-  for (let n = 0; n < 60 && game.phase !== 'won'; n += 1) {
+  for (let n = 0; n < 160 && game.phase !== 'won'; n += 1) {
     advance(game, bot, 20, null, true);
-    if (game.boss && game.rift.clock > 52) {
+    if (game.boss && game.rift.clock > 40) {
       game.boss.exposed = 2;
       damageCreature(game, game.boss, 1e6, 'burst');
     }
   }
   advance(game, bot, 4, null, true);
+  game.fx.texts.length = 0;
   return { game, screen: 'win', bests: { score: 0, chain: 0 }, time: game.t };
 }
 
+/** Lose: an unaided run until the Core shatters (not one of the four hand-in screenshots). */
+function stageLose(seed) {
+  const game = createGame(seed);
+  const bot = createBot();
+  advance(game, bot, 900);
+  advance(game, bot, 2);
+  return { game, screen: game.phase === 'won' ? 'win' : 'lose', bests: { score: 0, chain: 0 }, time: game.t };
+}
+
 export function stageShot(name, seed) {
+  if (name === 'lose') return stageLose(seed);
   if (name === 'early') return stageEarly(seed);
   if (name === 'boon') return stageBoon(seed);
   if (name === 'win') return stageWin(seed);

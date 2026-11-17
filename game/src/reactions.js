@@ -208,7 +208,7 @@ function registerReactions(game, events) {
   chain.count += gain;
   chain.best = Math.max(chain.best, chain.count);
   game.stats.bestChain = Math.max(game.stats.bestChain, chain.count);
-  game.stats.reactions += events.length;
+  game.stats.reactions += events.filter((e) => !e.spread).length;
   addScore(game, 4 * Math.min(events.length, 14));
   const focus = events.find((e) => e.name === top) ?? events[0];
   const px = toScreenX(focus.x);

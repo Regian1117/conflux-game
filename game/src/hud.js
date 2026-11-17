@@ -29,12 +29,12 @@ export function brushCardAt(x, y) {
 
 function drawRiftBlock(ctx, game) {
   drawPanel(ctx, 12, 8, 214, 68);
-  const number = Math.max(1, game.riftNum);
+  const number = Math.min(RIFT_COUNT, game.phase === 'prep' ? game.riftNum + 1 : Math.max(1, game.riftNum));
   drawText(ctx, `RIFT ${number}/${RIFT_COUNT}`, 24, 42, { size: 34, color: '#ffd9a0' });
   drawText(ctx, RIFT_PLANS[number - 1].title, 24, 62, { size: 12, color: P.muted, weight: 700, outline: 0 });
   const rift = game.rift;
   const left = rift ? rift.total - rift.next + game.creatures.length : 0;
-  const ratio = rift ? 1 - left / rift.total : 0;
+  const ratio = rift && game.phase !== 'prep' ? 1 - left / rift.total : 0;
   drawBar(ctx, 24, 68, 190, 5, game.riftNum === 0 ? 0 : ratio, '#ffb347');
 }
 
@@ -44,7 +44,7 @@ function drawQueue(ctx, game, time) {
   const groups = upcoming(game, 5);
   let x = 248;
   if (groups.length === 0) {
-    drawText(ctx, game.phase === 'clear' || game.phase === 'boon' ? 'rift cleared' : game.rift && !game.rift.done ? 'all creatures are out - finish them!' : 'last creatures on the field', x, 46, { size: 16, color: P.muted, outline: 0 });
+    drawText(ctx, game.phase === 'clear' || game.phase === 'boon' || game.phase === 'won' ? 'rift cleared' : game.rift && !game.rift.done ? 'all creatures are out - finish them!' : 'last creatures on the field', x, 46, { size: 16, color: P.muted, outline: 0 });
   }
   for (const g of groups) {
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
@@ -60,6 +60,7 @@ function drawQueue(ctx, game, time) {
   let line;
   if (game.phase === 'prep') line = `RIFT ${game.riftNum + 1} OPENS IN ${Math.ceil(game.prepTimer)}s   paint your defences!  [SPACE] open now`;
   else if (next) line = `NEXT: ${next.count} ${next.count > 1 ? KINDS[next.kind].plural : KINDS[next.kind].name} from ${next.gate} in ${Math.ceil(next.seconds)}s`;
+  else if (game.phase === 'won') line = 'ALL RIFTS SEALED';
   else if (game.phase === 'clear' || game.phase === 'boon') line = `RIFT ${game.riftNum} SEALED - well done!`;
   else line = 'finish the last creatures';
   const pulse = game.phase === 'prep' && Math.floor(time * 2) % 2 === 0;
@@ -152,7 +153,7 @@ function drawBossStrip(ctx, game, time) {
   drawText(ctx, 'HOLLOW COLOSSUS', x + 12, y + 22, { size: 18, color: '#c58aff' });
   drawBar(ctx, x + 190, y + 8, w - 202, 14, boss.hp / boss.maxHp, '#c0486a');
   if (boss.exposed > 0) drawText(ctx, `EXPOSED! ${Math.ceil(boss.exposed)}s`, x + 12, y + 56, { size: 24, color: '#ffd24a' });
-  else drawText(ctx, 'BREAK THE ARMOUR IN ORDER:', x + 12, y + 50, { size: 12, color: P.muted, outline: 0 });
+  else drawText(ctx, 'BREAK PLATES IN ORDER:', x + 12, y + 50, { size: 12, color: P.muted, outline: 0 });
   PLATES.forEach((plate, i) => {
     const cx = x + 190 + i * 117;
     const broken = i < boss.plates || boss.exposed > 0;

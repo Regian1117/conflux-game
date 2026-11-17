@@ -58,7 +58,7 @@ function drawLogo(ctx, x, y, size) {
 
 export function drawTitle(ctx, time) {
   dim(ctx, 0.62);
-  drawLogo(ctx, W / 2, 190, 150);
+  drawLogo(ctx, W / 2, 196, 124);
   drawText(ctx, 'paint four elements. make them react. hold the Core.', W / 2, 242, { size: 26, color: '#dfe7ff', align: 'center' });
   const names = ['FIRE', 'WATER', 'EARTH', 'STORM'];
   names.forEach((n, i) => {
@@ -158,7 +158,7 @@ function drawKillRow(ctx, game, y, time) {
 
 /** The end screens share a layout; `won` picks the words and colours. */
 export function drawEnd(ctx, game, bests, won, time) {
-  dim(ctx, won ? 0.7 : 0.74);
+  dim(ctx, won ? 0.76 : 0.78);
   const color = won ? '#ffd24a' : '#ff4a5e';
   if (won) {
     drawText(ctx, 'CONFLUX MASTERED', W / 2, 205, { size: 92, color, align: 'center' });
@@ -190,6 +190,7 @@ export function drawEnd(ctx, game, bests, won, time) {
     drawText(ctx, String(s[1]), x + 131, 458, { size: 32, color: '#ffffff', align: 'center' });
   });
   drawKillRow(ctx, game, 520, time);
-  if (blink(time, 1.6)) drawText(ctx, won ? 'Press R to play again' : 'Press R to retry', W / 2, 626, { size: 50, color: '#ffffff', align: 'center' });
+  const glow = 0.8 + 0.2 * Math.sin(time * 5);
+  drawText(ctx, won ? 'Press R to play again' : 'Press R to retry', W / 2, 626, { size: 50, color: `rgba(255,255,255,${glow})`, align: 'center' });
   drawText(ctx, won ? 'a perfect storm of elements' : 'paint earlier, chain harder', W / 2, 668, { size: 18, color: P.muted, align: 'center', outline: 0 });
 }

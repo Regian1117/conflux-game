@@ -134,7 +134,7 @@ export function updateGame(game, dt) {
   if (game.reactAcc >= REACT.interval) {
     game.reactAcc -= REACT.interval;
     tickReactions(game);
-    computeFlow(game.flow, game.grid);
+    computeFlow(game.flow, game.grid, game.rift !== null && game.rift.doneFor > 20);
   }
 
   if (game.phase === 'prep') {

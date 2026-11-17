@@ -69,7 +69,7 @@ function buildSpawnList(number) {
 
 export function startRift(game, number) {
   const spawns = buildSpawnList(number);
-  game.rift = { number, spawns, next: 0, clock: 0, total: spawns.length, done: false };
+  game.rift = { number, spawns, next: 0, clock: 0, total: spawns.length, done: false, doneFor: 0 };
   game.riftNum = number;
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 120, `RIFT ${number} OPENS`, { color: '#ffd9a0', size: 54, life: 2, vy: -10, pop: 0.4 });
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 168, RIFT_PLANS[number - 1].title, { color: '#ffffff', size: 28, life: 2, vy: -10 });
@@ -81,7 +81,7 @@ export function startRift(game, number) {
 export function updateRift(game, dt) {
   const rift = game.rift;
   rift.clock += dt;
-  const hpMul = 1 + 0.12 * (rift.number - 1);
+  const hpMul = 1 + 0.09 * (rift.number - 1);
   while (rift.next < rift.spawns.length && rift.spawns[rift.next].t <= rift.clock) {
     const s = rift.spawns[rift.next];
     rift.next += 1;
@@ -89,6 +89,7 @@ export function updateRift(game, dt) {
     else spawnCreature(game, s.kind, s.gate, hpMul);
   }
   rift.done = rift.next >= rift.spawns.length;
+  if (rift.done) rift.doneFor += dt;
   return rift.done && game.creatures.length === 0;
 }
 
@@ -97,7 +98,12 @@ export function updateRift(game, dt) {
  * few distinct groups, with `seconds` until each group's first creature.
  */
 export function upcoming(game, limit = 6) {
-  const rift = game.rift;
+  let rift = game.rift;
+  if (game.phase === 'prep') {
+    const number = game.riftNum + 1;
+    if (!game.preview || game.preview.number !== number) game.preview = { number, spawns: buildSpawnList(number) };
+    rift = { spawns: game.preview.spawns, next: 0, clock: -game.prepTimer };
+  }
   const out = [];
   if (!rift) return out;
   for (let i = rift.next; i < rift.spawns.length && out.length <= limit; i += 1) {

@@ -15,12 +15,12 @@ import { drawCreatureSprite } from './sprites.js';
  * fire for lava cells); a missing class means 1. A multiplier of 0 is an immunity.
  */
 export const KINDS = {
-  imp: { name: 'Cinder Imp', plural: 'Cinder Imps', hp: 44, speed: 2.3, r: 0.7, core: 6, pts: 60, mul: { fire: 0, water: 6 }, tip: 'Immune to fire. Drown it in WATER.' },
-  golem: { name: 'Mud Golem', plural: 'Mud Golems', hp: 280, speed: 0.95, r: 1.0, core: 14, pts: 160, gnaw: 14, mul: { fire: 0.5, water: 0.25, storm: 0.5 }, tip: 'Slow and tanky. Freeze it, then shatter it.' },
-  wraith: { name: 'Mist Wraith', plural: 'Mist Wraiths', hp: 85, speed: 1.9, r: 0.75, core: 8, pts: 120, flies: true, mul: { fire: 0, water: 0, ice: 0, storm: 1.2 }, tip: 'Floats over walls. Only STORM hurts it.' },
-  beetle: { name: 'Spark Beetle', plural: 'Spark Beetles', hp: 50, speed: 2.1, r: 0.65, core: 10, pts: 100, mul: { fire: 1.4, storm: 0 }, tip: 'Charges near storm, then explodes. Burn it first.' },
+  imp: { name: 'Cinder Imp', plural: 'Cinder Imps', hp: 44, speed: 2.3, r: 0.7, core: 5, pts: 60, mul: { fire: 0, water: 6 }, tip: 'Immune to fire. Drown it in WATER.' },
+  golem: { name: 'Mud Golem', plural: 'Mud Golems', hp: 280, speed: 0.95, r: 1.0, core: 10, pts: 160, gnaw: 14, mul: { fire: 0.5, water: 0.25, storm: 0.5 }, tip: 'Slow and tanky. Freeze it, then shatter it.' },
+  wraith: { name: 'Mist Wraith', plural: 'Mist Wraiths', hp: 85, speed: 1.9, r: 0.75, core: 6, pts: 120, flies: true, mul: { fire: 0, water: 0, ice: 0, storm: 1.2 }, tip: 'Floats over walls. Only STORM hurts it.' },
+  beetle: { name: 'Spark Beetle', plural: 'Spark Beetles', hp: 50, speed: 2.1, r: 0.65, core: 8, pts: 100, mul: { fire: 1.4, storm: 0 }, tip: 'Charges near storm, then explodes. Burn it first.' },
   swarm: { name: 'Ember Swarm', plural: 'Ember Swarm', hp: 15, speed: 2.8, r: 0.45, core: 2, pts: 18, mul: { fire: 0.3, water: 1.6, storm: 1.5 }, tip: 'Dozens of tiny embers. Chain them.' },
-  ram: { name: 'Stone Ram', plural: 'Stone Rams', hp: 170, speed: 1.6, r: 0.9, core: 12, pts: 140, smash: true, mul: { fire: 0.4, lava: 1.5 }, tip: 'Smashes earth walls. Lava melts it.' },
+  ram: { name: 'Stone Ram', plural: 'Stone Rams', hp: 170, speed: 1.6, r: 0.9, core: 9, pts: 140, smash: true, mul: { fire: 0.4, lava: 1.5 }, tip: 'Smashes earth walls. Lava melts it.' },
   colossus: { name: 'Hollow Colossus', plural: 'Hollow Colossus', hp: 1300, speed: 0.55, r: 3.2, core: 35, pts: 3000, straight: true, noFreeze: true, boss: true, mul: {}, tip: 'Break its armour plates in order.' },
 };
 
@@ -162,6 +162,8 @@ export function updateCreatures(game, dt) {
   const list = game.creatures;
   const coreX = CORE.col + 0.5;
   const coreY = CORE.row + 0.5;
+  // A rift that drags on (everything has spawned, a few creatures linger) speeds them up.
+  const stallBoost = game.rift !== null ? 1 + Math.min(1.5, Math.max(0, game.rift.doneFor - 25) / 25) : 1;
   for (const c of list) {
     if (c.dead) continue;
     const kind = KINDS[c.kind];
@@ -209,7 +211,7 @@ export function updateCreatures(game, dt) {
     }
 
     // Movement.
-    let speed = kind.speed * (c.steamed > 0 ? 0.5 : 1) * (c.wet > 0 ? 0.88 : 1) * (game.mods.creatureSpeed ?? 1);
+    let speed = kind.speed * (c.steamed > 0 ? 0.5 : 1) * (c.wet > 0 ? 0.88 : 1) * (game.mods.creatureSpeed ?? 1) * stallBoost;
     if (c.frozen > 0 || c.stun > 0) speed = 0;
     if (kind.flies || kind.straight) {
       const dx = coreX - c.x;
