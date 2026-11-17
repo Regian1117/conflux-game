@@ -20,7 +20,7 @@ Rift creatures walk out of four gates toward the Core Crystal in the middle of t
 
 Reactions trigger further reactions. Each chain shows a callout such as `CHAIN x7 - STORMSTEAM!` and multiplies your score.
 
-**Controls**: hold the mouse to paint; `1` FIRE, `2` WATER, `3` EARTH, `4` STORM pick the brush (each has its own essence bar that refills slowly and from kills); `Space` opens the next rift early; `P` pause; `M` mute; `R` retry on the end screens.
+**Controls**: pick a difficulty on the title screen (Apprentice, Adept or Archmage: creature health and count, essence regeneration), then hold the mouse to paint; `1` FIRE, `2` WATER, `3` EARTH, `4` STORM pick the brush (each has its own essence bar that refills slowly and from kills); `Space` opens the next rift early; `P` pause; `M` mute; `R` retry on the end screens.
 
 **Goal**: survive 7 rifts and defeat the **Hollow Colossus** on rift 7. The Core Crystal shatters if its health reaches 0. Six kinds of creature each have a weakness (Cinder Imp: drowns in water, immune to fire; Mud Golem: freeze then shatter it; Mist Wraith: only storm hurts it; Spark Beetle: charges near storm and explodes; Ember Swarm: many small embers; Stone Ram: smashes earth walls). The Colossus's armour plates break only to a named reaction sequence shown on screen. After every rift you pick 1 of 3 boons.
 

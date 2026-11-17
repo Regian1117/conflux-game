@@ -1,12 +1,9 @@
-// Full-screen overlays drawn over the running scene: title, how-to-play card, boon pick, pause,
-// win ("CONFLUX MASTERED") and lose ("THE CORE SHATTERS"). Each is a pure function of the game
-// state, so the screenshot mode can paint any of them.
-import { FIELD, FONT, H, PALETTE as P, PLATES, RIFT_COUNT, W } from './config.js';
-import { BRUSHES, ELEMENTS } from './elements.js';
+// Overlays drawn over the running scene: the how-to-play card, the boon pick and pause. (The title
+// is in menus.js and the win and lose cards are in results.js.)
+import { FIELD, FONT, H, PALETTE as P, W } from './config.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
-import { drawPanel, drawText, formatNumber } from './draw.js';
-import { drawColossus } from './colossus.js';
+import { drawPanel, drawText } from './draw.js';
 
 /** The three boon cards, left to right (also used for mouse hit tests). */
 export const BOON_CARDS = [0, 1, 2].map((i) => ({ x: 62 + i * 290, y: FIELD.y + 118, w: 270, h: 330 }));
@@ -40,40 +37,6 @@ function wrap(ctx, text, maxWidth) {
 
 function blink(time, rate = 2) {
   return Math.floor(time * rate) % 2 === 0;
-}
-
-/** The big CONFLUX logo with a fire-to-storm gradient. */
-function drawLogo(ctx, x, y, size) {
-  const grad = ctx.createLinearGradient(x - size * 2, y - size, x + size * 2, y);
-  grad.addColorStop(0, '#ff5a1f');
-  grad.addColorStop(0.35, '#ffd24a');
-  grad.addColorStop(0.65, '#22c3ff');
-  grad.addColorStop(1, '#a65cff');
-  ctx.font = `900 ${size}px ${FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = size / 8;
-  ctx.strokeStyle = '#05060a';
-  ctx.strokeText('CONFLUX', x, y);
-  ctx.fillStyle = grad;
-  ctx.fillText('CONFLUX', x, y);
-}
-
-export function drawTitle(ctx, time) {
-  dim(ctx, 0.62);
-  drawLogo(ctx, W / 2, 196, 124);
-  drawText(ctx, 'paint four elements. make them react. hold the Core.', W / 2, 242, { size: 26, color: '#dfe7ff', align: 'center' });
-  const names = ['FIRE', 'WATER', 'EARTH', 'STORM'];
-  names.forEach((n, i) => {
-    const el = ELEMENTS[BRUSHES[i]];
-    drawPanel(ctx, 262 + i * 190, 290, 170, 56, { edge: el.color, fill: 'rgba(8,10,16,0.85)' });
-    drawText(ctx, `[${i + 1}] ${n}`, 262 + i * 190 + 85, 326, { size: 24, color: el.color, align: 'center' });
-  });
-  drawText(ctx, 'FIRE + WATER = STEAM     FIRE + EARTH = LAVA     WATER + STORM = SHOCK     STEAM + STORM = LIGHTNING', W / 2, 392, { size: 17, color: '#ffd9a0', align: 'center' });
-  if (blink(time, 1.6)) drawText(ctx, 'PRESS SPACE OR CLICK TO BEGIN', W / 2, 480, { size: 40, color: '#ffffff', align: 'center' });
-  drawText(ctx, 'Survive 7 rifts and the Hollow Colossus. If the Core Crystal shatters, you lose.', W / 2, 530, { size: 20, color: P.muted, align: 'center' });
-  drawText(ctx, 'attract mode: the game is playing itself', W / 2, 700, { size: 14, color: P.muted, align: 'center', outline: 0 });
 }
 
 const REACTION_ROWS = [
@@ -142,139 +105,4 @@ export function drawPause(ctx) {
   dim(ctx, 0.7);
   drawText(ctx, 'PAUSED', W / 2, 330, { size: 100, color: '#ffffff', align: 'center' });
   drawText(ctx, 'press P to resume   -   R to restart   -   M to mute', W / 2, 390, { size: 26, color: '#dfe7ff', align: 'center' });
-}
-
-function drawStatBox(ctx, x, y, w, label, value, color) {
-  drawPanel(ctx, x, y, w, 96, { fill: 'rgba(10,13,22,0.92)', edge: color });
-  drawText(ctx, label, x + w / 2, y + 26, { size: 15, color: P.muted, align: 'center', outline: 0 });
-  drawText(ctx, value, x + w / 2, y + 74, { size: 44, color, align: 'center' });
-}
-
-function drawKillRow(ctx, game, y, time) {
-  const kinds = Object.keys(KINDS).filter((k) => game.stats.byKind[k]);
-  const width = kinds.length * 118;
-  kinds.forEach((id, i) => {
-    const x = W / 2 - width / 2 + i * 118 + 59;
-    drawCreatureSprite(ctx, id, x - 22, y, id === 'colossus' ? 5 : 13, time, {});
-    drawText(ctx, `x${game.stats.byKind[id]}`, x + 8, y + 7, { size: 22, color: '#ffffff' });
-  });
-}
-
-/** Confetti and firework rings for the win screen, positions derived from the clock only. */
-function drawCelebration(ctx, time) {
-  const colors = ['#ffd24a', '#ff5a1f', '#22c3ff', '#a65cff', '#6dffb0', '#ffffff'];
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-  ctx.clip();
-  for (let k = 0; k < 90; k += 1) {
-    const x = FIELD.x + ((k * 7919) % FIELD.w) + Math.sin(time * 1.5 + k) * 18;
-    const y = FIELD.y + ((time * (50 + (k % 5) * 14) + k * 61) % (FIELD.h + 40)) - 20;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(time * (1 + (k % 4)) + k);
-    ctx.fillStyle = colors[k % colors.length];
-    ctx.fillRect(-4, -2, 8, 4);
-    ctx.restore();
-  }
-  ctx.globalCompositeOperation = 'lighter';
-  for (let f = 0; f < 4; f += 1) {
-    const phase = (time * 0.55 + f * 0.27) % 1;
-    const cx = FIELD.x + 120 + f * 240 + (f % 2) * 40;
-    const cy = FIELD.y + 120 + (f % 3) * 70;
-    for (let k = 0; k < 18; k += 1) {
-      const a = (k / 18) * 6.283;
-      const r = phase * 90;
-      ctx.globalAlpha = 1 - phase;
-      ctx.fillStyle = colors[(k + f) % colors.length];
-      ctx.fillRect(cx + Math.cos(a) * r - 2, cy + Math.sin(a) * r + phase * phase * 30 - 2, 4, 4);
-    }
-  }
-  ctx.restore();
-}
-
-/** The dead Colossus, lit gold from within and from behind, under rising light and confetti. */
-function drawVictoryBackdrop(ctx, time) {
-  ctx.fillStyle = '#0a0b12';
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-  ctx.globalCompositeOperation = 'lighter';
-  const bottom = FIELD.y + FIELD.h;
-  for (let k = 0; k < 8; k += 1) {
-    const x = FIELD.x + 70 + k * 125 + Math.sin(time + k) * 12;
-    const beam = ctx.createLinearGradient(x, bottom, x, FIELD.y);
-    beam.addColorStop(0, 'rgba(255,210,120,0.3)');
-    beam.addColorStop(1, 'rgba(255,210,120,0)');
-    ctx.fillStyle = beam;
-    ctx.fillRect(x - 24, FIELD.y, 48, FIELD.h);
-  }
-  const halo = ctx.createRadialGradient(W / 2 - 150, bottom - 300, 20, W / 2 - 150, bottom - 300, 420);
-  halo.addColorStop(0, 'rgba(255,190,90,0.55)');
-  halo.addColorStop(1, 'rgba(255,120,40,0)');
-  ctx.fillStyle = halo;
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.save();
-  ctx.translate(W / 2 - 150, bottom - 250);
-  drawColossus(ctx, 105, time, { ruin: true, plates: 4 });
-  ctx.restore();
-  for (let k = 0; k < 16; k += 1) {
-    const x = FIELD.x + 40 + ((k * 331) % 800);
-    const y = bottom - 110 + ((k * 97) % 90);
-    ctx.fillStyle = PLATES[k % 4].color;
-    ctx.globalAlpha = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(x, y - 9);
-    ctx.lineTo(x + 13, y + 6);
-    ctx.lineTo(x - 9, y + 8);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(x - 14, y - 14, 28, 28);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-  ctx.globalAlpha = 1;
-  drawCelebration(ctx, time);
-}
-
-/** The end screens share a layout; `won` picks the words and colours. */
-export function drawEnd(ctx, game, bests, won, time) {
-  if (won) drawVictoryBackdrop(ctx, time);
-  ctx.save();
-  ctx.translate(0, OVERLAY_OFFSET);
-  dim(ctx, won ? 0.3 : 0.78);
-  const color = won ? '#ffd24a' : '#ff4a5e';
-  if (won) {
-    drawText(ctx, 'CONFLUX MASTERED', W / 2, 205, { size: 92, color, align: 'center' });
-    drawText(ctx, `All ${RIFT_COUNT} rifts sealed. The Hollow Colossus is hollow no more.`, W / 2, 248, { size: 25, color: '#dfe7ff', align: 'center' });
-  } else {
-    drawText(ctx, 'THE CORE SHATTERS', W / 2, 190, { size: 92, color, align: 'center' });
-    drawText(ctx, `The rifts broke through on rift ${Math.max(1, game.riftNum)} of ${RIFT_COUNT}.`, W / 2, 238, { size: 25, color: '#dfe7ff', align: 'center' });
-  }
-  const newScore = game.score >= bests.score && game.score > 0;
-  const newChain = game.stats.bestChain >= bests.chain && game.stats.bestChain > 0;
-  const boxes = [
-    ['SCORE', formatNumber(game.score), '#ffd24a'],
-    ['BEST SCORE', formatNumber(Math.max(bests.score, game.score)), '#ffe9a8'],
-    ['BEST CHAIN', `x${game.stats.bestChain}`, '#ffe23a'],
-    ['RIFTS CLEARED', `${game.stats.riftsCleared ?? 0}/${RIFT_COUNT}`, '#6dffb0'],
-  ];
-  boxes.forEach((b, i) => drawStatBox(ctx, 118 + i * 282, 290, 262, b[0], b[1], b[2]));
-  if (newScore) drawText(ctx, 'NEW BEST SCORE!', 118 + 140 + 0, 282, { size: 18, color: '#ffffff', align: 'center' });
-  if (newChain) drawText(ctx, 'NEW CHAIN RECORD!', 118 + 282 * 2 + 131, 282, { size: 18, color: '#ffffff', align: 'center' });
-  const small = [
-    ['CREATURES SLAIN', game.stats.kills],
-    ['REACTIONS', game.stats.reactions],
-    ['CORE HITS TAKEN', game.stats.coreHits],
-    ['CHAIN RECORD (ALL RUNS)', `x${Math.max(bests.chain, game.stats.bestChain)}`],
-  ];
-  small.forEach((s, i) => {
-    const x = 118 + i * 282;
-    drawText(ctx, String(s[0]), x + 131, 424, { size: 14, color: P.muted, align: 'center', outline: 0 });
-    drawText(ctx, String(s[1]), x + 131, 458, { size: 32, color: '#ffffff', align: 'center' });
-  });
-  drawKillRow(ctx, game, 520, time);
-  const glow = 0.8 + 0.2 * Math.sin(time * 5);
-  drawText(ctx, won ? 'Press R to play again' : 'Press R to retry', W / 2, 626, { size: 50, color: `rgba(255,255,255,${glow})`, align: 'center' });
-  drawText(ctx, won ? 'a perfect storm of elements' : 'paint earlier, chain harder', W / 2, 668, { size: 18, color: P.muted, align: 'center', outline: 0 });
-  ctx.restore();
 }

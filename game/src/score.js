@@ -5,6 +5,14 @@ import { addFlash, addShake, addText, burst } from './particles.js';
 import { sfx } from './audio.js';
 import { toScreenX, toScreenY } from './grid.js';
 
+/** The run's grade (S, A, B or C) from the Core's health, the hits it took and the difficulty. */
+export function gradeFor(game) {
+  const health = (game.core.hp / CORE.maxHp) * 100 + game.difficulty * 8 - game.stats.coreHits * 1.2;
+  if (health >= 88) return 'S';
+  if (health >= 60) return 'A';
+  return health >= 35 ? 'B' : 'C';
+}
+
 export const chainMult = (count) => 1 + Math.min(count, 30) * 0.1;
 
 /** Award `base` points times the current chain multiplier; optionally show them at (x, y) cells. */

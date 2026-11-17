@@ -27,13 +27,13 @@ export function deriveMods(game) {
     arcs: n('arc'),
     frost: n('frost') > 0,
     essenceMax: ESSENCE.max + 40 * n('overflow'),
-    regen: ESSENCE.regen * (1 + 0.3 * n('overflow')),
+    regen: ESSENCE.regen * game.tuning.regen * (1 + 0.3 * n('overflow')),
     lifeMul: 1 + 0.35 * n('slowdecay'),
     shieldMax: 40 * n('shield'),
     siphon: 0.6 * n('siphon'),
     stormBonus: 0,
     creatureSpeed: 1,
-    bossHpMul: 1,
+    bossHpMul: game.tuning.hp,
   };
 }
 

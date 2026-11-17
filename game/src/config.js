@@ -56,6 +56,16 @@ export const PALETTE = {
 };
 
 export const FONT = '"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif';
+/**
+ * Difficulty settings the title screen offers. hp scales creature (and boss) health, count scales
+ * how many creatures each group sends, regen scales essence regeneration.
+ */
+export const DIFFICULTIES = [
+  { name: 'APPRENTICE', tag: 'forgiving', hp: 0.75, count: 0.7, regen: 1.35, note: 'Creatures have 75% health and come 30% thinner. Essence refills 35% faster.' },
+  { name: 'ADEPT', tag: 'the intended game', hp: 1, count: 1, regen: 1, note: 'The intended challenge: full health, full numbers, normal essence.' },
+  { name: 'ARCHMAGE', tag: 'brutal', hp: 1.3, count: 1.3, regen: 0.8, note: 'Creatures have 30% more health and come 30% thicker. Essence refills 20% slower.' },
+];
+export const DIFFICULTY_KEY = 'conflux.difficulty';
 export const BEST_KEY = 'conflux.best';
 export const RECORD_KEY = 'conflux.chain';
 

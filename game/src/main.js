@@ -1,14 +1,16 @@
 // Boot and the one loop. The simulation advances in fixed 1/60 s steps; the screen state machine
 // moves between title (with attract mode), how-to-play, play, pause, boon pick, win and lose.
 //
-// ?seed=N fixes the random seed. ?shot=cover|early|boon|win (with &seed=N) stages that scene
+// ?seed=N fixes the random seed. ?shot=cover|title|boon|results (with &seed=N) stages that scene
 // instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, H, RECORD_KEY, STEP, W } from './config.js';
+import { BEST_KEY, DIFFICULTIES, DIFFICULTY_KEY, H, RECORD_KEY, STEP, W } from './config.js';
 import { createInput } from './input.js';
 import { beginNextPrep, callRift, createGame, selectBrush, setCursor, updateGame } from './game.js';
 import { drawBattlefield } from './render.js';
 import { brushCardAt, drawHud } from './hud.js';
-import { OVERLAY_OFFSET, boonCardAt, drawBoonPick, drawEnd, drawHelp, drawPause, drawTitle } from './screens.js';
+import { OVERLAY_OFFSET, boonCardAt, drawBoonPick, drawHelp, drawPause } from './screens.js';
+import { drawTitle, titleHit } from './menus.js';
+import { drawResults } from './results.js';
 import { takeBoon } from './boons.js';
 import { createBot, botStep } from './autopilot.js';
 import { isMuted, sfx, toggleMute, unlockAudio, updateMusic } from './audio.js';
@@ -52,27 +54,29 @@ function fitCanvas() {
 }
 
 /** Paint one complete frame: battlefield, HUD, then the overlay for the current screen. */
-function paint(game, screen, bests, time, hover) {
+function paint(game, screen, bests, time, hover, menu = { difficulty: 1, hit: null }) {
+  if (screen === 'win' || screen === 'lose') {
+    drawResults(ctx, game, bests, screen === 'win', time);
+    return;
+  }
   ctx.fillStyle = '#05060a';
   ctx.fillRect(0, 0, W, H);
   drawBattlefield(ctx, game, time);
   drawHud(ctx, game, bests, time);
+  if (screen === 'title') drawTitle(ctx, time, menu.difficulty, menu.hit);
   ctx.save();
   ctx.translate(0, OVERLAY_OFFSET);
-  if (screen === 'title') drawTitle(ctx, time);
-  else if (screen === 'help') drawHelp(ctx, time);
+  if (screen === 'help') drawHelp(ctx, time);
   else if (screen === 'pause') drawPause(ctx);
   ctx.restore();
   if (screen === 'boon') drawBoonPick(ctx, game, hover, time);
-  else if (screen === 'win') drawEnd(ctx, game, bests, true, time);
-  else if (screen === 'lose') drawEnd(ctx, game, bests, false, time);
 }
 
 function runShot(name) {
   const scene = stageShot(name, baseSeed);
   let painted = 0;
   function frame() {
-    paint(scene.game, scene.screen, scene.bests, scene.time, scene.hover ?? -1);
+    paint(scene.game, scene.screen, scene.bests, scene.time, scene.hover ?? -1, { difficulty: scene.difficulty ?? 1, hit: null });
     painted += 1;
     if (painted < 2) requestAnimationFrame(frame);
     else window.__shotReady = true;
@@ -84,7 +88,8 @@ function runGame() {
   const input = createInput(canvas);
   const bests = { score: readNumber(BEST_KEY), chain: readNumber(RECORD_KEY) };
   let screen = 'title';
-  let game = createGame(baseSeed);
+  let difficulty = Math.min(DIFFICULTIES.length - 1, readNumber(DIFFICULTY_KEY + '.set') ? readNumber(DIFFICULTY_KEY) : 1);
+  let game = createGame(baseSeed, difficulty);
   let attract = createGame(baseSeed + 1);
   const bot = createBot();
   let accumulator = 0;
@@ -96,7 +101,7 @@ function runGame() {
   }
 
   function newRun() {
-    game = createGame(Number.isInteger(seedParam) ? baseSeed : Math.floor(Math.random() * 4294967296));
+    game = createGame(Number.isInteger(seedParam) ? baseSeed : Math.floor(Math.random() * 4294967296), difficulty);
     screen = 'play';
     accumulator = 0;
     announce('Playing. Rift 1 opens soon. Paint with the mouse, keys 1 to 4 pick the brush.');
@@ -111,6 +116,13 @@ function runGame() {
       bests.chain = game.stats.bestChain;
       writeNumber(RECORD_KEY, bests.chain);
     }
+  }
+
+  function setDifficulty(index) {
+    difficulty = (index + DIFFICULTIES.length) % DIFFICULTIES.length;
+    writeNumber(DIFFICULTY_KEY, difficulty);
+    writeNumber(DIFFICULTY_KEY + '.set', 1);
+    sfx.click();
   }
 
   function chooseBoon(index) {
@@ -131,8 +143,13 @@ function runGame() {
         announce(isMuted() ? 'Sound off.' : 'Sound on.');
         continue;
       }
-      if (screen === 'title' && (code === 'Space' || code === 'Enter')) screen = 'help';
-      else if (screen === 'help' && (code === 'Space' || code === 'Enter')) newRun();
+      if (screen === 'title') {
+        if (code === 'Space' || code === 'Enter') newRun();
+        else if (code === 'KeyH') screen = 'help';
+        else if (code === 'ArrowLeft' || code === 'KeyA') setDifficulty(difficulty - 1);
+        else if (code === 'ArrowRight' || code === 'KeyD') setDifficulty(difficulty + 1);
+        else if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') setDifficulty(Number(code.slice(5)) - 1);
+      } else if (screen === 'help' && (code === 'Space' || code === 'Enter')) newRun();
       else if (screen === 'play') {
         if (code.startsWith('Digit')) selectBrush(game, Number(code.slice(5)) - 1);
         else if (code === 'Space' || code === 'Enter') callRift(game);
@@ -149,8 +166,11 @@ function runGame() {
   function handleClicks() {
     for (const click of input.takeClicks()) {
       unlockAudio();
-      if (screen === 'title') screen = 'help';
-      else if (screen === 'help') newRun();
+      if (screen === 'title') {
+        const hit = titleHit(click.x, click.y);
+        if (hit && hit.type === 'diff') setDifficulty(hit.index);
+        else if (hit && hit.type === 'start') newRun();
+      } else if (screen === 'help') newRun();
       else if (screen === 'boon') chooseBoon(boonCardAt(click.x, click.y));
       else if (screen === 'play') {
         const card = brushCardAt(click.x, click.y);
@@ -199,13 +219,14 @@ function runGame() {
     const hover = screen === 'boon' ? boonCardAt(input.pointer.x, input.pointer.y) : -1;
     const intensity = screen === 'title' || screen === 'help' ? 0.25 : game.boss ? 1 : 0.2 + (game.riftNum / 7) * 0.65;
     updateMusic(screen === 'pause' ? 0 : intensity);
-    paint(showing, screen, bests, now / 1000, hover);
+    const menu = { difficulty, hit: screen === 'title' ? titleHit(input.pointer.x, input.pointer.y) : null };
+    paint(showing, screen, bests, now / 1000, hover, menu);
   }
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && screen === 'play') screen = 'pause';
   });
-  announce('CONFLUX. Press Space or click to begin.');
+  announce('CONFLUX. Choose a difficulty, then press Space or click Start.');
   requestAnimationFrame(frame);
 }
 

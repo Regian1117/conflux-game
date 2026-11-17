@@ -1,7 +1,7 @@
 // The game state and its fixed-step update. createGame builds a fresh run; updateGame advances it
 // by one step: paint input, essence, cell decay, the reaction tick, creatures, the boss, rifts and
 // the win/lose phases. It never touches the DOM, so the autopilot and screenshot scenes use it too.
-import { BRUSH, CORE, ESSENCE, FIELD, FIRST_PREP_SECONDS, PREP_SECONDS, REACT, RIFT_COUNT } from './config.js';
+import { BRUSH, CORE, DIFFICULTIES, ESSENCE, FIELD, FIRST_PREP_SECONDS, PREP_SECONDS, REACT, RIFT_COUNT } from './config.js';
 import { BRUSHES } from './elements.js';
 import { CELLS, createGrid, fromScreenX, fromScreenY, paintDab, toScreenX, toScreenY } from './grid.js';
 import { computeFlow, createFlow } from './pathing.js';
@@ -15,9 +15,11 @@ import { deriveMods, offerBoons } from './boons.js';
 import { addScore, tickChain } from './score.js';
 import { sfx } from './audio.js';
 
-export function createGame(seed) {
+export function createGame(seed, difficulty = 1) {
   const game = {
     seed,
+    difficulty,
+    tuning: DIFFICULTIES[difficulty],
     rng: createRandom(seed),
     t: 0,
     grid: createGrid(),
