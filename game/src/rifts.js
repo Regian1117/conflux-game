@@ -1,6 +1,7 @@
 // The seven rifts (waves). Each rift is a list of spawn groups; startRift flattens one into a
 // timed spawn queue, updateRift releases creatures on schedule and reports when the rift is
 // cleared, and upcoming() summarises what is still to come for the HUD's NEXT line.
+import { OMENS } from './omens.js';
 import { FIELD, GATES, RIFT_COUNT } from './config.js';
 import { spawnColossus } from './boss.js';
 import { spawnCreature } from './creatures.js';
@@ -59,7 +60,7 @@ export const RIFT_PLANS = [
 ];
 
 /** Turn rift `number` (1-7) into a sorted list of {t, kind, gate}. */
-function buildSpawnList(number, count = 1, type = null) {
+function buildSpawnList(number, count = 1, type = null, omen = -1) {
   const node = NODE_TYPES[type];
   const list = [];
   for (const group of RIFT_PLANS[number - 1].groups) {
@@ -73,11 +74,20 @@ function buildSpawnList(number, count = 1, type = null) {
     const n = kind === 'colossus' ? 1 : Math.max(1, Math.round(amount * count));
     for (let i = 0; i < n; i += 1) list.push({ t: group.at + i * group.gap, kind, gate: gates[i % gates.length] });
   }
+  // The run's omen brings more of one creature.
+  const extra = OMENS[omen]?.kind;
+  if (extra) {
+    const same = list.filter((s) => s.kind === extra);
+    if (same.length > 0) for (let i = 0; i < Math.ceil(same.length * 0.4); i += 1) list.push({ t: same[i % same.length].t + 1.1, kind: extra, gate: same[i % same.length].gate });
+    else for (let i = 0; i < 2 + Math.floor(number / 2); i += 1) list.push({ t: 6 + i * 3.5, kind: extra, gate: ['W', 'E', 'N'][i % 3] });
+  }
   return list.sort((a, b) => a.t - b.t);
 }
 
 export function startRift(game, number) {
-  const spawns = buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type);
+  const spawns = buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type, game.omen);
+  game.stats.riftShocks = 0;
+  game.stats.riftHits = 0;
   game.rift = { number, spawns, next: 0, clock: 0, total: spawns.length, done: false, doneFor: 0 };
   game.riftNum = number;
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 120, `RIFT ${number} OPENS`, { color: '#ffd9a0', size: 54, life: 2, vy: -10, pop: 0.4 });
@@ -110,7 +120,7 @@ export function upcoming(game, limit = 6) {
   let rift = game.rift;
   if (game.phase === 'prep') {
     const number = game.riftNum + 1;
-    if (!game.preview || game.preview.number !== number) game.preview = { number, spawns: buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type) };
+    if (!game.preview || game.preview.number !== number) game.preview = { number, spawns: buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type, game.omen) };
     rift = { spawns: game.preview.spawns, next: 0, clock: -game.prepTimer };
   }
   const out = [];

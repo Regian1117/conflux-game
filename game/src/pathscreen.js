@@ -5,9 +5,12 @@
 import { DIFFICULTIES, FONT, H, RIFT_COUNT, W } from './config.js';
 import { BOONS, RARITY, REROLL_COST } from './boons.js';
 import { NODE_TYPES, nodeById, nodePosition, reachableNodes } from './path.js';
-import { drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
+import { drawFiligree, drawGlyph, drawGlyphTile, GLYPH_COLORS } from './glyphs.js';
 import { drawText } from './draw.js';
 import { drawToolBar } from './hud.js';
+import { BESTIARY, OMENS } from './omens.js';
+import { KINDS } from './creatures.js';
+import { drawCreatureSprite } from './sprites.js';
 
 const INK = '#f4e8c8';
 const GOLD = '#d4aa55';
@@ -201,7 +204,9 @@ function tooltip(ctx, node) {
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(8,10,18,0.98)';
   ctx.beginPath();
-  ctx.roundRect(x, top, w, 86, 12);
+  const seen = BESTIARY.filter(([kind]) => type.creatures.includes(KINDS[kind].plural.split(' ').pop()) || type.creatures.includes(KINDS[kind].name.split(' ').pop()));
+  const tall = seen.length > 0 ? 122 : 86;
+  ctx.roundRect(x, top, w, tall, 12);
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = type.color;
@@ -210,6 +215,19 @@ function tooltip(ctx, node) {
   drawText(ctx, type.name, x + 52, top + 33, { size: 20, color: type.color });
   drawText(ctx, `Creatures: ${type.creatures}`, x + 14, top + 56, { size: 15, color: '#f6e9c4', weight: 700, outline: 0 });
   drawText(ctx, `Reward: ${type.reward}`, x + 14, top + 76, { size: 15, color: '#ffd24a', weight: 700, outline: 0 });
+  seen.slice(0, 3).forEach(([kind, glyph, weak], i) => {
+    const ix = x + 28 + i * 106;
+    drawCreatureSprite(ctx, kind, ix, top + 101, kind === 'swarm' ? 8 : 11, 0, {});
+    ctx.beginPath();
+    ctx.arc(ix + 26, top + 101, 11, 0, 6.283);
+    ctx.fillStyle = '#05070c';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = GLYPH_COLORS[glyph];
+    ctx.stroke();
+    drawGlyph(ctx, glyph, ix + 26, top + 101, 7, GLYPH_COLORS[glyph], 2);
+    drawText(ctx, weak, ix + 42, top + 106, { size: 12, color: GLYPH_COLORS[glyph], outline: 0 });
+  });
 }
 
 function boonCards(ctx, game, ui, time) {
@@ -313,8 +331,11 @@ export function drawPath(ctx, game, time, ui = {}) {
   ctx.lineWidth = 2;
   ctx.stroke();
   drawText(ctx, `SEED ${game.seed}`, 56, 154, { size: 16, color: '#ffe9a8', outline: 0 });
-  drawText(ctx, `DIFFICULTY ${DIFFICULTIES[game.difficulty].name}`, 270, 154, { size: 16, color: '#ffe9a8', outline: 0 });
-  drawText(ctx, `REROLLS LEFT ${game.rerolls}`, 560, 154, { size: 16, color: '#ffe9a8', outline: 0 });
+  drawText(ctx, `DIFFICULTY ${DIFFICULTIES[game.difficulty].name}`, 200, 154, { size: 16, color: '#ffe9a8', outline: 0 });
+  drawText(ctx, `REROLLS ${game.rerolls}`, 410, 154, { size: 16, color: '#ffe9a8', outline: 0 });
+  const omen = OMENS[game.omen ?? 0];
+  drawGlyph(ctx, omen.glyph, 548, 147, 10, omen.color, 2.5);
+  drawText(ctx, `OMEN ${omen.name}`, 566, 154, { size: 16, color: omen.color, outline: 0 });
   for (let row = 1; row <= RIFT_COUNT; row += 1) {
     const p = nodePosition(row, 0, 1);
     drawText(ctx, row === RIFT_COUNT ? 'RIFT 7' : `RIFT ${row}`, p.x, 184, { size: 14, color: row <= game.route.length ? '#ffd24a' : '#8f98ad', align: 'center', outline: 0 });

@@ -67,4 +67,5 @@ export function damageCore(game, amount) {
   core.hitFlash = 0.5;
   burst(game.fx, 'spark', px + CELL / 2 - 10, py + CELL / 2 - 10, 14, ['#6ff0ff', '#ffffff', '#b0f8ff']);
   game.stats.coreHits += 1;
+  game.stats.riftHits += 1;
 }

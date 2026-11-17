@@ -95,7 +95,7 @@ function forkedBolt(game, x1, y1, x2, y2) {
 
 /** Cover: rift 7, painting mid-stroke over the storm pool, every area tagged, creatures converging from three sides. */
 function stageCover(seed) {
-  const game = createGame(seed);
+  const game = createGame(seed, 1, -1);
   const bot = createBot();
   for (const id of ['frost', 'wide', 'arc', 'arc', 'lava', 'overflow', 'shield']) takeBoon(game, id);
   game.riftNum = 6;
@@ -214,12 +214,12 @@ function stageTitle(seed) {
   const bot = createBot();
   advance(game, bot, 160, (g) => g.riftNum === 2 && g.rift.clock > 14);
   game.tip = null;
-  return { game, screen: 'title', bests: { score: 0, chain: 0 }, time: game.t, difficulty: 1 };
+  return { game, screen: 'title', bests: { score: 0, chain: 0 }, time: game.t, difficulty: 1, omen: 1 };
 }
 
 /** The Rift Path at rift 4 of 7: three nodes behind us, two branches ahead, the boon pick open. */
 function stagePath(seed) {
-  const game = createGame(seed);
+  const game = createGame(seed, 1, 1);
   const bot = createBot();
   advance(game, bot, 400, (g) => g.phase === 'path' && g.riftNum >= 3 && g.offer.length > 0, true);
   if (game.offer.length === 0) game.offer = offerBoons(game, null);
@@ -229,7 +229,7 @@ function stagePath(seed) {
 
 /** Results: the win card after a full run (the Colossus is finished off once it has been broken). */
 function stageWin(seed) {
-  const game = createGame(seed);
+  const game = createGame(seed, 1, 1);
   const bot = createBot();
   takeBoon(game, 'frost');
   game.godHp = 100;
@@ -245,6 +245,8 @@ function stageWin(seed) {
   // The run kept the Core topped up for the bot; report the state a real run would end in:
   // 26 hits taken, 12 points soaked by the shield, the Core at 74%.
   game.stats.coreHits = 26;
+  game.stats.maxShocks = Math.max(game.stats.maxShocks, 63);
+  game.stats.cleanRifts = Math.max(game.stats.cleanRifts, 3);
   game.stats.shieldAbsorbed = 12;
   game.core.hp = 74;
   const previous = Math.round((game.score * 0.74) / 100) * 100;

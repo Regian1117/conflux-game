@@ -210,6 +210,8 @@ function registerReactions(game, events) {
   game.stats.bestChain = Math.max(game.stats.bestChain, chain.count);
   game.stats.reactions += events.filter((e) => !e.spread).length;
   for (const e of events) if (!e.spread) game.stats.byReaction[e.name] = (game.stats.byReaction[e.name] ?? 0) + 1;
+  game.stats.riftShocks += events.filter((e) => !e.spread && e.name === 'SHOCK').length;
+  game.stats.maxShocks = Math.max(game.stats.maxShocks, game.stats.riftShocks);
   addScore(game, 4 * Math.min(events.length, 14));
   const focus = events.find((e) => e.name === top) ?? events[0];
   const px = toScreenX(focus.x);
@@ -254,7 +256,7 @@ export function tickReactions(game) {
       else if (type === STORM || type === CHARGED) storms.push(i);
       if (mark[i]) continue;
       if (game.mods.frost && type === WATER && g.age[i] > 1.2) {
-        setCell(g, col, row, ICE, lm);
+        setCell(g, col, row, ICE, lm * (game.omen === 2 ? 1.6 : 1));
         mark[i] = 1;
         events.push({ name: 'FROST', x: col + 0.5, y: row + 0.5 });
         burst(game.fx, 'shard', toScreenX(col + 0.5), toScreenY(row + 0.5), 2);

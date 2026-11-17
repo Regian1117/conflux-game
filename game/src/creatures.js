@@ -73,7 +73,7 @@ function multiplier(c, cls, type) {
 /** Hurt a creature with `base` damage of an element class; returns the damage it really took. */
 export function damageCreature(game, c, base, cls, type = 0) {
   if (c.hp <= 0) return 0;
-  const dealt = base * multiplier(c, cls, type) * (cls === 'storm' ? 1 + (game.mods.stormBonus ?? 0) : 1);
+  const dealt = base * multiplier(c, cls, type) * (cls === 'storm' ? 1 + (game.mods.stormBonus ?? 0) : 1) * (cls === 'fire' && game.omen === 0 ? 1.25 : 1);
   if (dealt <= 0) return 0;
   c.hp -= dealt;
   if (dealt >= 4) c.flash = 0.1;

@@ -11,7 +11,8 @@ import { drawBattlefield } from './render.js';
 import { brushCardAt, drawHud } from './hud.js';
 import { OVERLAY_OFFSET, drawHelp, drawPause } from './screens.js';
 import { drawTitle, titleHit } from './menus.js';
-import { TITLE_BUTTON, drawResults } from './results.js';
+import { OMENS, OMEN_KEY } from './omens.js';
+import { SEED_BUTTON, TITLE_BUTTON, drawResults } from './results.js';
 import { drawPath, drawShrine, pathBoonAt, pathNodeAt, rerollHit, shrineChoiceAt } from './pathscreen.js';
 import { takeBoon } from './boons.js';
 import { createBot, botStep } from './autopilot.js';
@@ -78,7 +79,7 @@ function paint(game, screen, bests, time, ui = {}) {
     ctx.filter = 'blur(4px) brightness(0.95) saturate(1.1)';
     ctx.drawImage(canvas, 12, 84, 1020, 600, 0, 0, W, H);
     ctx.restore();
-    drawTitle(ctx, time, ui.difficulty ?? 1, ui.hit ?? null, Boolean(ui.sameSeed), ui.seed ?? 0);
+    drawTitle(ctx, time, ui.difficulty ?? 1, ui.hit ?? null, Boolean(ui.sameSeed), ui.seed ?? 0, ui.omen ?? 0);
     return;
   }
   drawHud(ctx, game, bests, time);
@@ -93,7 +94,7 @@ function runShot(name) {
   const scene = stageShot(name, baseSeed);
   let painted = 0;
   function frame() {
-    paint(scene.game, scene.screen, scene.bests, scene.time, { difficulty: scene.difficulty ?? 1, sameSeed: false, seed: scene.game.seed, hit: null, hoverNode: scene.hoverNode, hoverBoon: scene.hoverBoon });
+    paint(scene.game, scene.screen, scene.bests, scene.time, { difficulty: scene.difficulty ?? 1, omen: scene.omen ?? 0, sameSeed: false, seed: scene.game.seed, hit: null, hoverNode: scene.hoverNode, hoverBoon: scene.hoverBoon });
     painted += 1;
     if (painted < 2) requestAnimationFrame(frame);
     else window.__shotReady = true;
@@ -107,6 +108,7 @@ function runGame() {
   let screen = 'title';
   let difficulty = Math.min(DIFFICULTIES.length - 1, readNumber(`${DIFFICULTY_KEY}.set`) ? readNumber(DIFFICULTY_KEY) : 1);
   let sameSeed = readNumber(`${SEED_KEY}.same`) === 1;
+  let omen = Math.min(OMENS.length - 1, readNumber(OMEN_KEY));
   let lastSeed = readNumber(SEED_KEY) || baseSeed;
   let game = createGame(baseSeed, difficulty);
   let attract = createGame(baseSeed + 1);
@@ -121,11 +123,11 @@ function runGame() {
   }
 
   /** Start a run: a fresh random seed, or the last run's seed when "Same seed" is on. */
-  function newRun() {
-    const seed = sameSeed ? lastSeed : Number.isInteger(seedParam) ? baseSeed : Math.floor(Math.random() * 4294967296);
+  function newRun(forceSame = false) {
+    const seed = sameSeed || forceSame ? lastSeed : Number.isInteger(seedParam) ? baseSeed : Math.floor(Math.random() * 4294967296);
     lastSeed = seed;
     writeNumber(SEED_KEY, seed);
-    game = createGame(seed, difficulty);
+    game = createGame(seed, difficulty, omen);
     screen = 'path';
     accumulator = 0;
     announce('The Rift Path. Pick your first rift.');
@@ -146,6 +148,12 @@ function runGame() {
     difficulty = (index + DIFFICULTIES.length) % DIFFICULTIES.length;
     writeNumber(DIFFICULTY_KEY, difficulty);
     writeNumber(`${DIFFICULTY_KEY}.set`, 1);
+    sfx.click();
+  }
+
+  function setOmen(index) {
+    omen = (index + OMENS.length) % OMENS.length;
+    writeNumber(OMEN_KEY, omen);
     sfx.click();
   }
 
@@ -186,6 +194,7 @@ function runGame() {
         if (code === 'Space' || code === 'Enter') newRun();
         else if (code === 'KeyH') screen = 'help';
         else if (code === 'KeyS') toggleSameSeed();
+        else if (code === 'KeyO') setOmen(omen + 1);
         else if (code === 'ArrowLeft' || code === 'KeyA') setDifficulty(difficulty - 1);
         else if (code === 'ArrowRight' || code === 'KeyD') setDifficulty(difficulty + 1);
         else if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') setDifficulty(Number(code.slice(5)) - 1);
@@ -206,6 +215,7 @@ function runGame() {
         else if (code === 'KeyQ' && rerollBoons(game)) sfx.click();
       } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) {
         if (code === 'KeyR' || code === 'Space' || code === 'Enter') newRun();
+        else if (code === 'KeyS') newRun(true);
         else if (code === 'KeyT') screen = 'title';
       }
     }
@@ -217,6 +227,7 @@ function runGame() {
       if (screen === 'title') {
         const hit = titleHit(click.x, click.y);
         if (hit && hit.type === 'diff') setDifficulty(hit.index);
+        else if (hit && hit.type === 'omen') setOmen(hit.index);
         else if (hit && hit.type === 'seed') toggleSameSeed();
         else if (hit && hit.type === 'start') newRun();
       } else if (screen === 'help') newRun();
@@ -242,7 +253,9 @@ function runGame() {
         if (card >= 0) selectBrush(game, card);
       } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) {
         const b = TITLE_BUTTON;
+        const s = SEED_BUTTON;
         if (click.x >= b.x && click.x < b.x + b.w && click.y >= b.y && click.y < b.y + b.h) screen = 'title';
+        else if (click.x >= s.x && click.x < s.x + s.w && click.y >= s.y && click.y < s.y + s.h) newRun(true);
         else newRun();
       }
     }
@@ -290,7 +303,7 @@ function runGame() {
     // The end screens' backdrops keep animating through the particles of the finished run.
     if (screen === 'win' || screen === 'lose') updateGame(game, STEP);
     const showing = screen === 'title' || screen === 'help' ? attract : game;
-    const ui = { difficulty, sameSeed, seed: lastSeed, hit: screen === 'title' ? titleHit(input.pointer.x, input.pointer.y) : null };
+    const ui = { difficulty, omen, sameSeed, seed: lastSeed, hit: screen === 'title' ? titleHit(input.pointer.x, input.pointer.y) : null };
     if (screen === 'path') {
       const node = pathNodeAt(game, input.pointer.x, input.pointer.y);
       ui.hoverNode = node ? node.id : null;

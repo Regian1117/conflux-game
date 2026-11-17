@@ -34,7 +34,7 @@ export function deriveMods(game) {
   game.mods = {
     brushRadius: BRUSH.radius + 0.7 * n('wide'),
     lavaSpread: 0.15 * n('lava'),
-    arcs: n('arc'),
+    arcs: n('arc') + (game.omen === 1 ? 1 : 0),
     frost: n('frost') > 0,
     essenceMax: ESSENCE.max + 40 * n('overflow'),
     regen: ESSENCE.regen * game.tuning.regen * (1 + 0.3 * n('overflow')),

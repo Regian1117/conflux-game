@@ -16,10 +16,11 @@ import { NODE_TYPES, generateMap, nodeById, reachableNodes } from './path.js';
 import { addScore, tickChain } from './score.js';
 import { sfx } from './audio.js';
 
-export function createGame(seed, difficulty = 1) {
+export function createGame(seed, difficulty = 1, omen = 0) {
   const game = {
     seed,
     difficulty,
+    omen,
     tuning: DIFFICULTIES[difficulty],
     rng: createRandom(seed),
     map: generateMap(createRandom(seed ^ 0x5eed1234)),
@@ -44,7 +45,7 @@ export function createGame(seed, difficulty = 1) {
     core: { hp: CORE.maxHp, shield: 0, hitFlash: 0 },
     score: 0,
     chain: { count: 0, timer: 0, best: 0, lastText: -9, lastGain: -9, kinds: new Set() },
-    stats: { shieldAbsorbed: 0, byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {} },
+    stats: { shieldAbsorbed: 0, byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {}, riftShocks: 0, maxShocks: 0, riftHits: 0, cleanRifts: 0, plateResets: 0, riftScores: [], lastScore: 0 },
     boons: {},
     mods: {},
     rift: null,
@@ -140,6 +141,9 @@ function finishRift(game) {
   game.clearTimer = game.riftNum === RIFT_COUNT ? 2.4 : 1.6;
   addScore(game, 300 * game.riftNum);
   game.stats.riftsCleared = game.riftNum;
+  game.stats.riftScores[game.riftNum - 1] = game.score - game.stats.lastScore;
+  game.stats.lastScore = game.score;
+  if (game.stats.riftHits === 0) game.stats.cleanRifts += 1;
   applyNodeReward(game);
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 150, game.riftNum === RIFT_COUNT ? 'THE RIFTS ARE SEALED' : `RIFT ${game.riftNum} CLEARED`, { color: '#6dffb0', size: 54, life: 2.2, vy: -8, pop: 0.4 });
 }
@@ -237,6 +241,7 @@ export function resolveShrine(game, choice) {
   else game.rerolls += 1;
   game.riftNum += 1;
   game.stats.riftsCleared = game.riftNum;
+  game.stats.riftScores[game.riftNum - 1] = 0;
   game.offer = [];
   game.phase = 'path';
 }

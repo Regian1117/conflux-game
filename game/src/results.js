@@ -8,10 +8,12 @@ import { drawText, formatNumber } from './draw.js';
 import { drawFiligree, drawGlyph, GLYPH_COLORS } from './glyphs.js';
 import { gradeFor } from './score.js';
 import { routeSummary } from './path.js';
+import { FEATS, OMENS } from './omens.js';
 
 /** The two buttons (also click targets). */
-export const AGAIN_BUTTON = { x: 250, y: 706, w: 470, h: 76 };
-export const TITLE_BUTTON = { x: 750, y: 706, w: 280, h: 76 };
+export const AGAIN_BUTTON = { x: 40, y: 708, w: 440, h: 72 };
+export const SEED_BUTTON = { x: 496, y: 708, w: 410, h: 72 };
+export const TITLE_BUTTON = { x: 922, y: 708, w: 318, h: 72 };
 
 const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
 
@@ -165,10 +167,65 @@ function panel(ctx, x, y, w, h, color) {
 }
 
 function statTile(ctx, x, y, label, value, color, sub) {
-  panel(ctx, x, y, 290, 88, color);
-  drawText(ctx, label, x + 145, y + 26, { size: 15, color: '#c9d2e8', align: 'center', outline: 0 });
-  drawText(ctx, value, x + 145, sub ? y + 62 : y + 72, { size: sub ? 36 : 42, color, align: 'center' });
-  if (sub) drawText(ctx, sub, x + 145, y + 81, { size: 13, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
+  panel(ctx, x, y, 202, 90, color);
+  drawText(ctx, label, x + 101, y + 24, { size: 13, color: '#c9d2e8', align: 'center', outline: 0 });
+  drawText(ctx, value, x + 101, sub ? y + 61 : y + 68, { size: value.length > 8 ? 26 : 38, color, align: 'center' });
+  if (sub) drawText(ctx, sub, x + 101, y + 81, { size: 13, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
+}
+
+/** The feats earned this run (the rest dimmed). */
+function featsPanel(ctx, game, won, x, y, w, h, accent) {
+  panel(ctx, x, y, w, h, accent);
+  const earned = FEATS.filter((f) => f.test(game, won)).length;
+  drawText(ctx, 'FEATS', x + 20, y + 36, { size: 26, color: '#ffffff' });
+  drawText(ctx, `${earned}/${FEATS.length} earned`, x + w - 18, y + 34, { size: 16, color: '#ffe9a8', align: 'right', outline: 0 });
+  FEATS.forEach((f, i) => {
+    const ry = y + 52 + i * 35;
+    const ok = f.test(game, won);
+    ctx.globalAlpha = ok ? 1 : 0.35;
+    ctx.beginPath();
+    ctx.arc(x + 32, ry + 15, 15, 0, 6.283);
+    ctx.fillStyle = '#05070c';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = ok ? f.color : '#5a6480';
+    ctx.stroke();
+    drawGlyph(ctx, f.glyph, x + 32, ry + 15, 10, f.color, 2.5);
+    drawText(ctx, f.name, x + 58, ry + 14, { size: 17, color: ok ? f.color : '#8f98ad' });
+    drawText(ctx, f.desc, x + 58, ry + 30, { size: 12, color: '#ffffff', weight: 700, outline: 0 });
+    ctx.globalAlpha = 1;
+    if (ok) {
+      ctx.strokeStyle = '#6dffb0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x + w - 38, ry + 15);
+      ctx.lineTo(x + w - 32, ry + 22);
+      ctx.lineTo(x + w - 20, ry + 7);
+      ctx.stroke();
+    }
+  });
+}
+
+/** A small bar chart of the score earned in each rift. */
+function riftChart(ctx, game, x, y, w, h, accent) {
+  panel(ctx, x, y, w, h, accent);
+  drawText(ctx, 'SCORE PER RIFT', x + 18, y + 32, { size: 20, color: '#ffffff' });
+  const scores = Array.from({ length: RIFT_COUNT }, (_, i) => game.stats.riftScores[i] ?? 0);
+  const max = Math.max(1, ...scores);
+  const bw = 36;
+  const gap = (w - 36 - RIFT_COUNT * bw) / (RIFT_COUNT - 1);
+  const base = y + h - 30;
+  scores.forEach((v, i) => {
+    const bx = x + 18 + i * (bw + gap);
+    const bh = Math.max(v > 0 ? 6 : 2, (v / max) * (h - 100));
+    const grad = ctx.createLinearGradient(0, base - bh, 0, base);
+    grad.addColorStop(0, i === RIFT_COUNT - 1 ? '#c58aff' : '#ffe27a');
+    grad.addColorStop(1, i === RIFT_COUNT - 1 ? '#6a3ad0' : '#e8780f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(bx, base - bh, bw, bh);
+    drawText(ctx, v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v)), bx + bw / 2, base - bh - 5, { size: 12, color: '#ffffff', align: 'center', outline: 2 });
+    drawText(ctx, String(i + 1), bx + bw / 2, base + 19, { size: 15, color: '#ffd24a', align: 'center', outline: 0 });
+  });
 }
 
 /** The ornate grade medallion: gold rings, rays and the grade (or the rift reached). */
@@ -214,9 +271,9 @@ function medallion(ctx, cx, cy, label, color, grade, time) {
 
 /** Horizontal bars of how often each reaction fired, in its element colour. */
 function reactionChart(ctx, stats, x, y, w, h, accent) {
-  const rowGap = (h - 70) / 6;
+  const rowGap = (h - 64) / 6;
   panel(ctx, x, y, w, h, accent);
-  drawText(ctx, 'REACTIONS USED', x + 24, y + 38, { size: 24, color: '#ffffff' });
+  drawText(ctx, 'REACTIONS USED', x + 20, y + 36, { size: 22, color: '#ffffff' });
   const by = stats.byReaction;
   const rows = [
     ['steam', 'STEAM', (by.STEAM ?? 0) + (by.QUENCH ?? 0)],
@@ -228,15 +285,15 @@ function reactionChart(ctx, stats, x, y, w, h, accent) {
   ];
   const max = Math.max(1, ...rows.map((r) => r[2]));
   rows.forEach(([kind, name, count], i) => {
-    const ry = y + 54 + i * rowGap;
+    const ry = y + 48 + i * rowGap;
     const color = GLYPH_COLORS[kind];
-    drawGlyph(ctx, kind, x + 38, ry + 14, 12, color, 3);
-    drawText(ctx, name, x + 62, ry + 21, { size: 15, color: '#e6ecff', outline: 2 });
+    drawGlyph(ctx, kind, x + 30, ry + 14, 11, color, 3);
+    drawText(ctx, name, x + 50, ry + 20, { size: 14, color: '#e6ecff', outline: 2 });
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(x + 176, ry + 4, w - 290, 22);
+    ctx.fillRect(x + 152, ry + 4, w - 222, 20);
     ctx.fillStyle = color;
-    ctx.fillRect(x + 176, ry + 4, Math.max(count > 0 ? 6 : 0, ((w - 290) * count) / max), 22);
-    drawText(ctx, formatNumber(count), x + w - 20, ry + 23, { size: 20, color: '#ffffff', align: 'right' });
+    ctx.fillRect(x + 152, ry + 4, Math.max(count > 0 ? 6 : 0, ((w - 222) * count) / max), 20);
+    drawText(ctx, formatNumber(count), x + w - 14, ry + 21, { size: 17, color: '#ffffff', align: 'right' });
   });
 }
 
@@ -258,8 +315,8 @@ function button(ctx, b, label, top, bottom, accent, time) {
   ctx.beginPath();
   ctx.roundRect(b.x, b.y, b.w, b.h, 18);
   ctx.stroke();
-  ctx.font = `900 46px ${FONT}`;
-  drawText(ctx, label, b.x + b.w / 2, b.y + 54, { size: 46, color: '#1a0c00', align: 'center', outline: 0 });
+  ctx.font = `900 40px ${FONT}`;
+  drawText(ctx, label, b.x + b.w / 2, b.y + 49, { size: 40, color: '#1a0c00', align: 'center', outline: 0 });
 }
 
 const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -278,42 +335,48 @@ export function drawResults(ctx, game, bests, won, time) {
   const grade = won ? gradeFor(game) : null;
   const label = won ? grade : `${Math.max(1, game.riftNum)}/${RIFT_COUNT}`;
   const medal = won ? GRADE_COLORS[grade] : '#ff7a8a';
-  medallion(ctx, 200, 356, label, medal, Boolean(won), time);
-  drawText(ctx, won ? 'GRADE' : 'RIFT REACHED', 200, 500, { size: 20, color: '#ffffff', align: 'center' });
+  medallion(ctx, 160, 336, label, medal, Boolean(won), time);
+  drawText(ctx, won ? 'GRADE' : 'RIFT REACHED', 160, 490, { size: 20, color: '#ffffff', align: 'center' });
 
-  panel(ctx, 380, 222, 330, 240, accent);
-  drawText(ctx, 'SCORE', 545, 262, { size: 20, color: '#c9d2e8', align: 'center', outline: 0 });
-  drawText(ctx, formatNumber(game.score), 545, 350, { size: 76, color: '#ffe9a8', align: 'center' });
+  panel(ctx, 326, 222, 250, 230, accent);
+  drawText(ctx, 'SCORE', 451, 258, { size: 20, color: '#c9d2e8', align: 'center', outline: 0 });
+  drawText(ctx, formatNumber(game.score), 451, 332, { size: formatNumber(game.score).length > 6 ? 52 : 62, color: '#ffe9a8', align: 'center' });
   const isBest = game.score >= bests.score && game.score > 0;
-  drawText(ctx, bests.score > 0 ? `previous best ${formatNumber(bests.score)}` : 'first run on record', 545, 396, { size: 19, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
+  drawText(ctx, bests.score > 0 ? `previous best ${formatNumber(bests.score)}` : 'first run on record', 451, 372, { size: 16, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
+  const omen = OMENS[game.omen ?? 0];
+  const diff = DIFFICULTIES[game.difficulty ?? 1].name;
+  drawGlyph(ctx, omen.glyph, 352, 413, 13, omen.color, 3);
+  drawText(ctx, omen.name, 374, 411, { size: 17, color: omen.color });
+  drawText(ctx, `${diff} difficulty`, 374, 436, { size: 15, color: '#ffffff', outline: 0, weight: 800 });
   if (isBest) {
-    // A small ribbon across the panel's top-right corner.
     ctx.save();
-    ctx.translate(676, 244);
+    ctx.translate(540, 244);
     ctx.rotate(0.6);
     ctx.fillStyle = '#2a9a5a';
-    ctx.fillRect(-58, -13, 116, 26);
+    ctx.fillRect(-52, -12, 104, 24);
     ctx.strokeStyle = '#baffd0';
     ctx.lineWidth = 2;
-    ctx.strokeRect(-58, -13, 116, 26);
-    drawText(ctx, 'NEW BEST', 0, 6, { size: 15, color: '#ffffff', align: 'center', outline: 0 });
+    ctx.strokeRect(-52, -12, 104, 24);
+    drawText(ctx, 'NEW BEST', 0, 5, { size: 14, color: '#ffffff', align: 'center', outline: 0 });
     ctx.restore();
   }
-  reactionChart(ctx, stats, 730, 222, 510, 252, accent);
+  reactionChart(ctx, stats, 592, 222, 330, 230, accent);
+  featsPanel(ctx, game, won, 938, 222, 302, 230, accent);
 
-  const diff = DIFFICULTIES[game.difficulty ?? 1].name;
+  riftChart(ctx, game, 30, 500, 380, 194, accent);
   const tiles = [
     ['BEST CHAIN', `x${stats.bestChain}`, '#ffe23a'],
     ['RIFTS CLEARED', `${stats.riftsCleared ?? 0}/${RIFT_COUNT}`, '#6dffb0'],
     ['CREATURES DISSOLVED', formatNumber(stats.kills), '#ff9a5a'],
     ['REACTIONS TRIGGERED', formatNumber(stats.reactions), '#22c3ff'],
-    ['DIFFICULTY', diff, '#c58aff'],
     ['TIME', formatTime(game.t), '#ffffff'],
     [won ? 'CORE HEALTH LEFT' : 'CHAIN RECORD', won ? `${Math.ceil(game.core.hp)}%` : `x${Math.max(bests.chain, stats.bestChain)}`, '#6ff0ff'],
-    ['CORE HITS TAKEN', String(stats.coreHits), '#ff7a8a', `${Math.round(stats.shieldAbsorbed)} absorbed by the shield`],
+    ['CORE HITS TAKEN', String(stats.coreHits), '#ff7a8a', `${Math.round(stats.shieldAbsorbed)} absorbed`],
+    ['OMEN', omen.name.split(' ')[0], omen.color, diff],
   ];
-  tiles.forEach((t, i) => statTile(ctx, 30 + (i % 4) * 310, 506 + Math.floor(i / 4) * 100, t[0], t[1], t[2], t[3]));
+  tiles.forEach((t, i) => statTile(ctx, 426 + (i % 4) * 210, 504 + Math.floor(i / 4) * 100, t[0], t[1], t[2], t[3]));
 
   button(ctx, AGAIN_BUTTON, won ? 'PLAY AGAIN (R)' : 'TRY AGAIN (R)', won ? '#ffd24a' : '#ff6a7a', won ? '#e8780f' : '#c4203a', accent, time);
+  button(ctx, SEED_BUTTON, 'SAME SEED (S)', '#8dffc0', '#1f9a5a', '#6dffb0', time);
   button(ctx, TITLE_BUTTON, 'TITLE (T)', '#9ad4ff', '#4a7fd0', '#6aa8ff', time);
 }

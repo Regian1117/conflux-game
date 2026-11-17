@@ -70,6 +70,7 @@ export function updateBoss(game, dt) {
   if (boss.exposed > 0) {
     boss.exposed -= dt;
     if (boss.exposed <= 0) {
+      if (boss.plates > 0) game.stats.plateResets += 1;
       boss.plates = 0;
       boss.plateT = [];
       addText(game.fx, toScreenX(boss.x), toScreenY(boss.y) - 170, 'ARMOUR REFORMS', { color: '#c58aff', size: 34, life: 1.6, pop: 0.3 });
