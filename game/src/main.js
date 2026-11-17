@@ -7,7 +7,7 @@
 import { BEST_KEY, DIFFICULTIES, DIFFICULTY_KEY, H, RECORD_KEY, SEED_KEY, STEP, W } from './config.js';
 import { createInput } from './input.js';
 import { autoAdvance, callRift, createGame, pickNode, rerollBoons, resolveShrine, selectBrush, setCursor, tryProceed, updateGame } from './game.js';
-import { drawBattlefield } from './render.js';
+import { drawBattlefield, screenToWorld } from './render.js';
 import { brushCardAt, drawHud } from './hud.js';
 import { OVERLAY_OFFSET, drawHelp, drawPause } from './screens.js';
 import { drawTitle, titleHit } from './menus.js';
@@ -76,7 +76,7 @@ function paint(game, screen, bests, time, ui = {}) {
     // No game HUD behind the title: the attract battlefield, enlarged, blurred and darkened.
     ctx.save();
     ctx.filter = 'blur(4px) brightness(0.95) saturate(1.1)';
-    ctx.drawImage(canvas, 12, 84, 1020, 600, 0, 0, W, H);
+    ctx.drawImage(canvas, 0, 0);
     ctx.restore();
     drawTitle(ctx, time, ui.difficulty ?? 1, ui.hit ?? null, Boolean(ui.sameSeed), ui.seed ?? 0);
     return;
@@ -261,7 +261,8 @@ function runGame() {
       return;
     }
     if (screen !== 'play') return;
-    setCursor(game, input.pointer.x, input.pointer.y, input.pointer.down);
+    const world = screenToWorld(game.cam, input.pointer.x, input.pointer.y);
+    setCursor(game, world.x, world.y, input.pointer.down && brushCardAt(input.pointer.x, input.pointer.y) < 0);
     updateGame(game, STEP);
     if (game.phase === 'path') {
       screen = 'path';

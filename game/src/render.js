@@ -1,7 +1,7 @@
 // Paints the battlefield: the cached obsidian floor, torn rift portals, every painted cell as a
 // material (materials.js), the faceted Core Crystal, creatures, particles, floating text and the
 // brush cursor. The HUD and the overlay screens are painted on top by hud.js and screens.js.
-import { CELL, COLS, CORE, FIELD, GATES } from './config.js';
+import { CELL, COLS, CORE, FIELD, GATES, H, VIEW_SCALE, W } from './config.js';
 import { BRUSHES, ELEMENTS, ruleFor } from './elements.js';
 import { toScreenX, toScreenY } from './grid.js';
 import { KINDS, drawCreatures } from './creatures.js';
@@ -329,12 +329,12 @@ function drawCursor(ctx, game, time) {
     ctx.fillRect(x + Math.cos(a) * 19 - 1.5, y + Math.sin(a) * 19 - 1.5, 3, 3);
   }
   ctx.globalCompositeOperation = 'source-over';
-  cursorTag(ctx, x + 16, y - 34, 'YOU', '#ffd24a');
+  if (!cur.down) cursorTag(ctx, x + 16, y - 34, 'YOU', '#ffd24a');
   if (cur.down) {
     const under = game.grid.type[Math.floor(cur.y) * COLS + Math.floor(cur.x)] ?? 0;
     const rule = under ? ruleFor(under, BRUSHES[index]) : null;
     const made = rule && rule.a ? ELEMENTS[rule.a].name : '';
-    cursorTag(ctx, x + 16, y + 18, made ? `painting ${element.name} \u2192 ${made}` : `painting ${element.name}`, element.color);
+    cursorTag(ctx, x + 16, y - 34, made ? `YOU \u00b7 painting ${element.name} \u2192 ${made}` : `YOU \u00b7 painting ${element.name}`, element.color);
   }
 }
 
@@ -375,16 +375,88 @@ function drawApproachPaths(ctx, game) {
 
 let bloomCanvas = null;
 let grain = null;
+let lightCanvas = null;
+
+/** The camera's scale and (clamped) centre in world pixels. */
+function viewOf(cam) {
+  const scale = VIEW_SCALE * cam.zoom;
+  const halfW = W / (2 * scale);
+  const halfH = H / (2 * scale);
+  return { scale, cx: Math.min(FIELD.w - halfW, Math.max(halfW, cam.cx)), cy: Math.min(FIELD.h - halfH, Math.max(halfH, cam.cy)) };
+}
+
+/** Convert a canvas pixel (mouse) to a world pixel, through the camera. */
+export function screenToWorld(cam, px, py) {
+  const v = viewOf(cam);
+  return { x: (px - W / 2) / v.scale + v.cx, y: (py - H / 2) / v.scale + v.cy };
+}
 
 /**
- * Soft bloom (the bright parts of the field, blurred by downscaling and added back) and a faint
- * paper grain, so the scene reads as a painted arcane world rather than flat shapes.
+ * Night-time lighting: the world is darkened by multiplying a low-resolution light map, which has a
+ * dim ambient plus additive light from every energy source: the Core (strongest), lava and fire,
+ * lightning and charged water (flickering), rifts, ice, magnetite, the boss, some creatures and the brush.
+ */
+function drawLighting(ctx, game, time) {
+  if (!lightCanvas) {
+    lightCanvas = document.createElement('canvas');
+    lightCanvas.width = Math.ceil(FIELD.w / 4);
+    lightCanvas.height = Math.ceil(FIELD.h / 4);
+  }
+  const g = lightCanvas.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+  g.fillStyle = 'rgb(58,64,96)';
+  g.fillRect(0, 0, lightCanvas.width, lightCanvas.height);
+  g.globalCompositeOperation = 'lighter';
+  const light = (x, y, r, color, alpha) => {
+    g.globalAlpha = Math.min(1, alpha);
+    g.drawImage(glowSprite(color), (x - r) / 4, (y - r) / 4, r / 2, r / 2);
+  };
+  const grid = game.grid;
+  for (let i = 0; i < grid.type.length; i += 1) {
+    const type = grid.type[i];
+    if (type === 0) continue;
+    const x = (i % COLS) * CELL + 10;
+    const y = Math.floor(i / COLS) * CELL + 10;
+    if (type === 1 || type === 6) light(x, y, 95, '#ff8a3a', 0.5);
+    else if (type === 7 || type === 4 || type === 10) light(x, y, 100, '#c9b8ff', (type === 10 ? 0.3 : 0.5) * (0.65 + 0.35 * Math.sin(time * 26 + i * 1.7)));
+    else if (type === 8) light(x, y, 70, '#8fc0ff', 0.28);
+    else if (type === 9) light(x, y, 60, '#ff7a9a', 0.22);
+  }
+  light((CORE.col + 0.5) * CELL, (CORE.row + 0.5) * CELL, 330, '#ffe6a8', 1);
+  light((CORE.col + 0.5) * CELL, (CORE.row + 0.5) * CELL, 160, '#fff4d0', 1);
+  for (const gate of Object.values(GATES)) light((gate.col + 0.5) * CELL + (gate.col === 0 ? 38 : gate.col > 0 && gate.row === CORE.row ? -38 : 0), (gate.row + 0.5) * CELL + (gate.row === 0 ? 38 : gate.row === GATES.S.row ? -38 : 0), 140, '#a66cff', 0.8);
+  for (const bolt of game.fx.bolts) {
+    const fade = Math.max(0, bolt.life / bolt.max);
+    for (const [x, y] of [bolt.points[0], bolt.points[bolt.points.length - 1]]) light(x, y, 130, '#d6c8ff', 0.9 * fade);
+  }
+  for (const c of game.creatures) {
+    const x = c.x * CELL;
+    const y = c.y * CELL;
+    if (c.kind === 'colossus') light(x, y, 220, '#ffb070', 0.7);
+    else if (c.kind === 'imp') light(x, y, 60, '#ff8a3a', 0.4);
+    else if (c.kind === 'wraith') light(x, y, 70, '#9fd8ff', 0.3);
+    else if (c.kind === 'beetle') light(x, y, 60, '#ffe23a', 0.3);
+  }
+  if (game.cursor.inField) light(game.cursor.x * CELL, game.cursor.y * CELL, 90, ELEMENTS[BRUSHES[game.brush]].glow, 0.55);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(lightCanvas, 0, 0, FIELD.w, FIELD.h);
+  ctx.restore();
+}
+
+/**
+ * Soft bloom (the bright parts of the picture, blurred by downscaling and added back), a faint paper
+ * grain and a vignette, over the whole canvas.
  */
 function drawBloomAndGrain(ctx) {
   if (!bloomCanvas) {
     bloomCanvas = document.createElement('canvas');
     bloomCanvas.width = 192;
-    bloomCanvas.height = 136;
+    bloomCanvas.height = 120;
     const n = document.createElement('canvas');
     n.width = 96;
     n.height = 96;
@@ -398,31 +470,31 @@ function drawBloomAndGrain(ctx) {
   const b = bloomCanvas.getContext('2d');
   b.globalCompositeOperation = 'source-over';
   b.filter = 'blur(2px) brightness(1.15) contrast(1.25)';
-  b.drawImage(ctx.canvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h, 0, 0, 192, 136);
+  b.drawImage(ctx.canvas, 0, 0, W, H, 0, 0, 192, 120);
   b.filter = 'none';
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.3;
-  ctx.drawImage(bloomCanvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.drawImage(bloomCanvas, 0, 0, W, H);
   ctx.globalAlpha = 0.05;
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = grain;
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.fillRect(0, 0, W, H);
   ctx.globalAlpha = 1;
-  const vignette = ctx.createRadialGradient(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.h * 0.38, FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.w * 0.62);
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.66);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.42)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.5)');
   ctx.fillStyle = vignette;
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.fillRect(0, 0, W, H);
 }
 
-/** Paint the whole battlefield for this frame (inside the FIELD rectangle, with screen shake). */
+/** Paint the whole battlefield, full-bleed: through the camera, with night lighting, shake, bloom and vignette. */
 export function drawBattlefield(ctx, game, time) {
   const shake = game.fx.shake;
+  const v = viewOf(game.cam);
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-  ctx.clip();
-  ctx.translate(Math.sin(time * 91) * shake, Math.cos(time * 73) * shake);
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(v.scale, v.scale);
+  ctx.translate(-v.cx + Math.sin(time * 91) * shake, -v.cy + Math.cos(time * 73) * shake);
   ctx.drawImage(getGround(), FIELD.x, FIELD.y);
   ctx.globalAlpha = game.cursor.down ? 0.07 : 0.035;
   ctx.drawImage(getGridLines(), FIELD.x, FIELD.y);
@@ -433,19 +505,17 @@ export function drawBattlefield(ctx, game, time) {
   drawBossWarning(ctx, game);
   drawApproachPaths(ctx, game);
   drawCreatures(ctx, game, time);
+  drawLighting(ctx, game, time);
   drawParticles(ctx, game.fx);
   drawCursor(ctx, game, time);
   drawTexts(ctx, game.fx);
   drawLabels(ctx, game);
-  drawBloomAndGrain(ctx);
   ctx.restore();
+  drawBloomAndGrain(ctx);
   if (game.fx.flash > 0) {
     ctx.globalAlpha = Math.min(0.45, game.fx.flash * 0.5);
     ctx.fillStyle = game.fx.flashColor;
-    ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+    ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
   }
-  ctx.strokeStyle = '#2a3042';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(FIELD.x - 1.5, FIELD.y - 1.5, FIELD.w + 3, FIELD.h + 3);
 }

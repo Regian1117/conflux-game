@@ -23,10 +23,10 @@ export function drawText(ctx, str, x, y, options = {}) {
 export function drawPanel(ctx, x, y, w, h, options = {}) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, options.radius ?? 10);
-  ctx.fillStyle = options.fill ?? P.panel;
+  ctx.fillStyle = options.fill ?? 'rgba(8,10,18,0.64)';
   ctx.fill();
-  ctx.lineWidth = options.lineWidth ?? 2;
-  ctx.strokeStyle = options.edge ?? P.panelEdge;
+  ctx.lineWidth = options.lineWidth ?? 1.5;
+  ctx.strokeStyle = options.edge ?? 'rgba(212,170,85,0.6)';
   ctx.stroke();
 }
 

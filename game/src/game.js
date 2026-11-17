@@ -26,6 +26,7 @@ export function createGame(seed, difficulty = 1) {
     route: [],
     node: null,
     pendingNode: null,
+    cam: { zoom: 1, cx: FIELD.w / 2, cy: FIELD.h / 2, hold: 0, fx: FIELD.w / 2, fy: FIELD.h / 2 },
     rerolls: 1,
     offerBias: null,
     t: 0,
@@ -149,6 +150,13 @@ export function updateGame(game, dt) {
   updateFx(game.fx, dt);
   for (let i = 0; i < 4; i += 1) game.emptyFlash[i] = Math.max(0, game.emptyFlash[i] - dt);
   game.core.hitFlash = Math.max(0, game.core.hitFlash - dt);
+  // Climax camera: ease in toward the action while `hold` lasts, then back out.
+  const cam = game.cam;
+  cam.hold = Math.max(0, cam.hold - dt);
+  const ease = Math.min(1, dt * 2.2);
+  cam.zoom += ((cam.hold > 0 ? 1.25 : 1) - cam.zoom) * ease;
+  cam.cx += ((cam.hold > 0 ? cam.fx : FIELD.w / 2) - cam.cx) * ease;
+  cam.cy += ((cam.hold > 0 ? cam.fy : FIELD.h / 2) - cam.cy) * ease;
   // The brush's fading stroke trail.
   for (const point of game.cursor.trail) point.age += dt;
   game.cursor.trail = game.cursor.trail.filter((point) => point.age < 0.9);
