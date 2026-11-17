@@ -68,7 +68,7 @@ export function addText(fx, x, y, text, options = {}) {
 }
 
 /** A jagged lightning bolt between two pixel points that fades in a fraction of a second. */
-export function addBolt(fx, x1, y1, x2, y2, color = '#ffe23a', life = 0.22) {
+export function addBolt(fx, x1, y1, x2, y2, color = '#ffe23a', life = 0.22, width = 1) {
   const points = [[x1, y1]];
   const segments = Math.max(3, Math.floor(Math.hypot(x2 - x1, y2 - y1) / 22));
   for (let i = 1; i < segments; i += 1) {
@@ -76,7 +76,7 @@ export function addBolt(fx, x1, y1, x2, y2, color = '#ffe23a', life = 0.22) {
     points.push([x1 + (x2 - x1) * t + fx.rng.range(-9, 9), y1 + (y2 - y1) * t + fx.rng.range(-9, 9)]);
   }
   points.push([x2, y2]);
-  fx.bolts.push({ points, color, life, max: life });
+  fx.bolts.push({ points, color, life, max: life, width });
   if (fx.bolts.length > 30) fx.bolts.shift();
 }
 
@@ -164,7 +164,7 @@ export function drawParticles(ctx, fx) {
     for (const b of fx.bolts) {
       const a = Math.max(0, b.life / b.max);
       ctx.globalCompositeOperation = 'lighter';
-      for (const pass of [[b.color, 7, 0.28], ['#ffffff', 2.2, 1]]) {
+      for (const pass of [[b.color, 7 * (b.width ?? 1), 0.28], ['#ffffff', 2.2 * (b.width ?? 1), 1]]) {
         ctx.strokeStyle = pass[0];
         ctx.lineWidth = pass[1];
         ctx.globalAlpha = a * pass[2];

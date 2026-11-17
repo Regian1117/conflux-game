@@ -218,9 +218,9 @@ function drawTorso(ctx, u, flash, lit, exposed, ruin, t) {
   }
   jagged(ctx, hole, u);
   const core = ctx.createRadialGradient(0, -0.52 * u, 0.03 * u, 0, -0.52 * u, 0.55 * u);
-  core.addColorStop(0, ruin ? '#7a6a58' : '#fffbe0');
-  core.addColorStop(0.3, ruin ? '#2a2018' : exposed ? '#ffb02a' : '#ff7a1a');
-  core.addColorStop(0.75, ruin ? '#0e0a08' : '#9a2a08');
+  core.addColorStop(0, ruin ? '#fff6d0' : '#fffbe0');
+  core.addColorStop(0.3, ruin ? '#ffb02a' : exposed ? '#ffb02a' : '#ff7a1a');
+  core.addColorStop(0.75, ruin ? '#8a3a08' : '#9a2a08');
   core.addColorStop(1, '#05060a');
   ctx.fillStyle = core;
   ctx.fill();

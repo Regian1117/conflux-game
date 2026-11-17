@@ -5,6 +5,7 @@ import { FIELD, GATES, RIFT_COUNT } from './config.js';
 import { spawnColossus } from './boss.js';
 import { spawnCreature } from './creatures.js';
 import { addShake, addText } from './particles.js';
+import { NODE_TYPES } from './path.js';
 import { sfx } from './audio.js';
 
 /** group: kind, count, gap between spawns (s), start time (s), gate key or list of gate keys. */
@@ -58,18 +59,25 @@ export const RIFT_PLANS = [
 ];
 
 /** Turn rift `number` (1-7) into a sorted list of {t, kind, gate}. */
-function buildSpawnList(number, count = 1) {
+function buildSpawnList(number, count = 1, type = null) {
+  const node = NODE_TYPES[type];
   const list = [];
   for (const group of RIFT_PLANS[number - 1].groups) {
     const gates = Array.isArray(group.gate) ? group.gate : [group.gate];
-    const n = group.kind === 'colossus' ? 1 : Math.max(1, Math.round(group.n * count));
-    for (let i = 0; i < n; i += 1) list.push({ t: group.at + i * group.gap, kind: group.kind, gate: gates[i % gates.length] });
+    let kind = group.kind;
+    let amount = group.n;
+    if (kind !== 'colossus' && node?.swap?.[kind]) {
+      kind = node.swap[kind];
+      amount *= node.scale?.[kind] ?? 1;
+    }
+    const n = kind === 'colossus' ? 1 : Math.max(1, Math.round(amount * count));
+    for (let i = 0; i < n; i += 1) list.push({ t: group.at + i * group.gap, kind, gate: gates[i % gates.length] });
   }
   return list.sort((a, b) => a.t - b.t);
 }
 
 export function startRift(game, number) {
-  const spawns = buildSpawnList(number, game.tuning.count);
+  const spawns = buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type);
   game.rift = { number, spawns, next: 0, clock: 0, total: spawns.length, done: false, doneFor: 0 };
   game.riftNum = number;
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 120, `RIFT ${number} OPENS`, { color: '#ffd9a0', size: 54, life: 2, vy: -10, pop: 0.4 });
@@ -82,7 +90,7 @@ export function startRift(game, number) {
 export function updateRift(game, dt) {
   const rift = game.rift;
   rift.clock += dt;
-  const hpMul = (1 + 0.09 * (rift.number - 1)) * game.tuning.hp;
+  const hpMul = (1 + 0.09 * (rift.number - 1)) * game.tuning.hp * (NODE_TYPES[game.node?.type]?.hp ?? 1);
   while (rift.next < rift.spawns.length && rift.spawns[rift.next].t <= rift.clock) {
     const s = rift.spawns[rift.next];
     rift.next += 1;
@@ -102,7 +110,7 @@ export function upcoming(game, limit = 6) {
   let rift = game.rift;
   if (game.phase === 'prep') {
     const number = game.riftNum + 1;
-    if (!game.preview || game.preview.number !== number) game.preview = { number, spawns: buildSpawnList(number, game.tuning.count) };
+    if (!game.preview || game.preview.number !== number) game.preview = { number, spawns: buildSpawnList(number, game.tuning.count * (NODE_TYPES[game.node?.type]?.count ?? 1), game.node?.type) };
     rift = { spawns: game.preview.spawns, next: 0, clock: -game.prepTimer };
   }
   const out = [];

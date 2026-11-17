@@ -6,7 +6,7 @@
 export const GLYPH_COLORS = {
   fire: '#ff6a2a', water: '#2ec8ff', earth: '#b98a4a', storm: '#ffe23a', steam: '#dff3fb', lava: '#ff8a2a', shock: '#5ff0ff',
   cloud: '#c58aff', magnet: '#ff7a9a', ice: '#dff6ff', frost: '#dff6ff', ring: '#ffd24a', shield: '#7fe9ff', hourglass: '#d9b36a',
-  cross: '#ff7aa0', spiral: '#c58aff',
+  cross: '#ff7aa0', spiral: '#c58aff', crown: '#ff4a5e',
 };
 
 function tri(ctx, s, up) {
@@ -133,6 +133,18 @@ export function drawGlyph(ctx, kind, x, y, s, color = GLYPH_COLORS[kind], lw = 3
       ctx.lineTo(s * 0.7, -s * 0.9);
       ctx.lineTo(-s * 0.7, s * 0.9);
       ctx.lineTo(s * 0.7, s * 0.9);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    case 'crown':
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.9, s * 0.65);
+      ctx.lineTo(-s * 0.9, -s * 0.5);
+      ctx.lineTo(-s * 0.4, 0);
+      ctx.lineTo(0, -s * 0.85);
+      ctx.lineTo(s * 0.4, 0);
+      ctx.lineTo(s * 0.9, -s * 0.5);
+      ctx.lineTo(s * 0.9, s * 0.65);
       ctx.closePath();
       ctx.stroke();
       break;

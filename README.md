@@ -22,6 +22,8 @@ Reactions trigger further reactions. Each chain shows a callout such as `CHAIN x
 
 **Controls**: pick a difficulty on the title screen (Apprentice, Adept or Archmage: creature health and count, essence regeneration), then hold the mouse to paint; `1` FIRE, `2` WATER, `3` EARTH, `4` STORM pick the brush (each has its own essence bar that refills slowly and from kills); `Space` opens the next rift early; `P` pause; `M` mute; `R` retry on the end screens.
 
+**The Rift Path**: after each rift you take a boon (with a reroll) and pick your next rift on a branching map: Ember, Tide, Stone, Storm, Elite or a Shrine, ending at the Hollow Colossus. The map comes from the run's seed; the title screen has a "Same seed" option to replay it.
+
 **Goal**: survive 7 rifts and defeat the **Hollow Colossus** on rift 7. The Core Crystal shatters if its health reaches 0. Six kinds of creature each have a weakness (Cinder Imp: drowns in water, immune to fire; Mud Golem: freeze then shatter it; Mist Wraith: only storm hurts it; Spark Beetle: charges near storm and explodes; Ember Swarm: many small embers; Stone Ram: smashes earth walls). The Colossus's armour plates break only to a named reaction sequence shown on screen. After every rift you pick 1 of 3 boons.
 
 ## Run it

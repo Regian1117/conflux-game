@@ -49,6 +49,7 @@ export function damageCore(game, amount) {
   if (core.shield > 0) {
     const soaked = Math.min(core.shield, rest);
     core.shield -= soaked;
+    game.stats.shieldAbsorbed += soaked;
     rest -= soaked;
   }
   const px = toScreenX(CORE.col + 0.5);

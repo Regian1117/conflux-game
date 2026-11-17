@@ -11,7 +11,8 @@ import { ambientEffects, decayCells, reactNow, tickReactions } from './reactions
 import { updateCreatures } from './creatures.js';
 import { updateBoss } from './boss.js';
 import { startRift, updateRift } from './rifts.js';
-import { deriveMods, offerBoons } from './boons.js';
+import { REROLL_COST, deriveMods, offerBoons, takeBoon } from './boons.js';
+import { NODE_TYPES, generateMap, nodeById, reachableNodes } from './path.js';
 import { addScore, tickChain } from './score.js';
 import { sfx } from './audio.js';
 
@@ -21,6 +22,12 @@ export function createGame(seed, difficulty = 1) {
     difficulty,
     tuning: DIFFICULTIES[difficulty],
     rng: createRandom(seed),
+    map: generateMap(createRandom(seed ^ 0x5eed1234)),
+    route: [],
+    node: null,
+    pendingNode: null,
+    rerolls: 1,
+    offerBias: null,
     t: 0,
     grid: createGrid(),
     mark: new Uint8Array(CELLS),
@@ -37,12 +44,12 @@ export function createGame(seed, difficulty = 1) {
     core: { hp: CORE.maxHp, shield: 0, hitFlash: 0 },
     score: 0,
     chain: { count: 0, timer: 0, best: 0, lastText: -9, lastGain: -9, kinds: new Set() },
-    stats: { byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {} },
+    stats: { shieldAbsorbed: 0, byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {} },
     boons: {},
     mods: {},
     rift: null,
     riftNum: 0,
-    phase: 'prep',
+    phase: 'path',
     prepTimer: FIRST_PREP_SECONDS,
     clearTimer: 0,
     offer: [],
@@ -107,11 +114,31 @@ export function setCursor(game, px, py, down) {
   c.down = down;
 }
 
+/** Reward for clearing a rift of the current node's type (essence, repair, score), shown as text. */
+function applyNodeReward(game) {
+  const type = game.node?.type;
+  const x = FIELD.x + FIELD.w / 2;
+  const y = FIELD.y + 230;
+  if (type === 'tide') {
+    for (let i = 0; i < 4; i += 1) game.essence[i] = Math.min(game.mods.essenceMax, game.essence[i] + 40);
+    addText(game.fx, x, y, '+40 ESSENCE IN EVERY POOL', { color: '#2ec8ff', size: 30, life: 2 });
+  } else if (type === 'stone') {
+    game.core.hp = Math.min(CORE.maxHp, game.core.hp + 20);
+    addText(game.fx, x, y, 'CORE REPAIRED +20', { color: '#c9a36a', size: 30, life: 2 });
+  } else if (type === 'storm') {
+    addScore(game, 600);
+    game.chain.best = Math.max(game.chain.best, game.chain.count + 3);
+    addText(game.fx, x, y, 'STORM BONUS +600', { color: '#ffe23a', size: 30, life: 2 });
+  }
+  game.offerBias = NODE_TYPES[type]?.bias ?? null;
+}
+
 function finishRift(game) {
   game.phase = 'clear';
   game.clearTimer = game.riftNum === RIFT_COUNT ? 2.4 : 1.6;
   addScore(game, 300 * game.riftNum);
   game.stats.riftsCleared = game.riftNum;
+  applyNodeReward(game);
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 150, game.riftNum === RIFT_COUNT ? 'THE RIFTS ARE SEALED' : `RIFT ${game.riftNum} CLEARED`, { color: '#6dffb0', size: 54, life: 2.2, vy: -8, pop: 0.4 });
 }
 
@@ -120,7 +147,7 @@ export function updateGame(game, dt) {
   updateFx(game.fx, dt);
   for (let i = 0; i < 4; i += 1) game.emptyFlash[i] = Math.max(0, game.emptyFlash[i] - dt);
   game.core.hitFlash = Math.max(0, game.core.hitFlash - dt);
-  if (game.phase === 'won' || game.phase === 'lost' || game.phase === 'boon') return;
+  if (game.phase === 'won' || game.phase === 'lost' || game.phase === 'path' || game.phase === 'shrine') return;
 
   game.t += dt;
   if (game.tip) {
@@ -155,8 +182,9 @@ export function updateGame(game, dt) {
         game.phase = 'won';
         sfx.win();
       } else {
-        game.offer = offerBoons(game);
-        game.phase = 'boon';
+        game.offer = offerBoons(game, game.offerBias);
+        game.pendingNode = null;
+        game.phase = 'path';
       }
     }
   }
@@ -172,9 +200,63 @@ export function updateGame(game, dt) {
   }
 }
 
-/** Called after a boon is chosen: start the preparation countdown for the next rift. */
-export function beginNextPrep(game) {
+/** Mark `id` as the next rift (it starts once any pending boon is taken). Returns false if unreachable. */
+export function pickNode(game, id) {
+  if (game.phase !== 'path' || !reachableNodes(game.map, game.route).some((n) => n.id === id)) return false;
+  game.pendingNode = id;
+  tryProceed(game);
+  return true;
+}
+
+/** Start the chosen node once the boon pick (if any) is done: a rift gets its prep countdown, a shrine its choice. */
+export function tryProceed(game) {
+  if (game.phase !== 'path' || !game.pendingNode || game.offer.length > 0) return false;
+  const node = nodeById(game.map, game.pendingNode);
+  game.pendingNode = null;
+  game.route.push(node.id);
+  game.node = node;
+  if (node.type === 'shrine') {
+    game.phase = 'shrine';
+    return true;
+  }
   game.phase = 'prep';
-  game.prepTimer = PREP_SECONDS;
+  game.prepTimer = game.riftNum === 0 ? FIRST_PREP_SECONDS : PREP_SECONDS;
   game.core.shield = game.mods.shieldMax;
+  return true;
+}
+
+/** A shrine: heal the Core or gain a reroll. It counts as a cleared rift. */
+export function resolveShrine(game, choice) {
+  if (game.phase !== 'shrine') return;
+  if (choice === 'heal') game.core.hp = Math.min(CORE.maxHp, game.core.hp + 35);
+  else game.rerolls += 1;
+  game.riftNum += 1;
+  game.stats.riftsCleared = game.riftNum;
+  game.offer = [];
+  game.phase = 'path';
+}
+
+/** Redraw the three boons: a free reroll if one is held, else it costs REROLL_COST essence from every pool. */
+export function rerollBoons(game) {
+  if (game.phase !== 'path' || game.offer.length === 0) return false;
+  if (game.rerolls > 0) game.rerolls -= 1;
+  else if (Math.min(...game.essence) >= REROLL_COST) for (let i = 0; i < 4; i += 1) game.essence[i] -= REROLL_COST;
+  else return false;
+  game.offer = offerBoons(game, game.offerBias);
+  return true;
+}
+
+/** Let a bot (attract mode, screenshot scenes) take care of the path screen: a boon, then a node. */
+export function autoAdvance(game, preference = []) {
+  if (game.phase === 'shrine') resolveShrine(game, game.core.hp < 80 ? 'heal' : 'reroll');
+  if (game.phase !== 'path') return;
+  if (game.offer.length > 0) {
+    const rank = (b) => (preference.includes(b.id) ? preference.indexOf(b.id) : 99);
+    const pick = [...game.offer].sort((a, b) => rank(a) - rank(b))[0];
+    takeBoon(game, pick.id);
+    game.offer = [];
+  }
+  const nodes = reachableNodes(game.map, game.route);
+  pickNode(game, nodes[game.route.length % nodes.length].id);
+  if (game.phase === 'shrine') resolveShrine(game, game.core.hp < 80 ? 'heal' : 'reroll');
 }

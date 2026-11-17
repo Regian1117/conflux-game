@@ -1,18 +1,9 @@
 // Overlays drawn over the running scene: the how-to-play card, the boon pick and pause. (The title
 // is in menus.js and the win and lose cards are in results.js.)
-import { FIELD, FONT, H, PALETTE as P, W } from './config.js';
+import { FIELD, H, PALETTE as P, W } from './config.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
 import { drawPanel, drawText } from './draw.js';
-import { drawFiligree, drawGlyph } from './glyphs.js';
-import { RARITY } from './boons.js';
-
-/** The three boon cards, left to right (also used for mouse hit tests). */
-export const BOON_CARDS = [0, 1, 2].map((i) => ({ x: 77 + i * 310, y: FIELD.y + 118, w: 290, h: 400 }));
-
-export function boonCardAt(x, y) {
-  return BOON_CARDS.findIndex((c) => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h);
-}
 
 /** The 720-line layouts of the full-screen overlays are centred in the taller canvas. */
 export const OVERLAY_OFFSET = (H - 720) / 2;
@@ -76,82 +67,6 @@ export function drawHelp(ctx, time) {
   });
   drawText(ctx, '[SPACE] open the next rift early   [P] pause   [M] mute   [R] restart', W / 2, 626, { size: 16, color: '#aab4cc', align: 'center', outline: 0 });
   if (blink(time, 1.6)) drawText(ctx, 'PRESS SPACE TO DEFEND THE CORE', W / 2, 650, { size: 26, color: '#ffffff', align: 'center' });
-}
-
-export function drawBoonPick(ctx, game, hover, time) {
-  dim(ctx, 0.5, false);
-  drawText(ctx, `RIFT ${game.riftNum} CLEARED`, FIELD.x + FIELD.w / 2, FIELD.y + 56, { size: 50, color: '#6dffb0', align: 'center' });
-  drawText(ctx, 'CHOOSE A BOON  -  press 1, 2 or 3, or click a card', FIELD.x + FIELD.w / 2, FIELD.y + 92, { size: 24, color: '#ffffff', align: 'center' });
-  game.offer.forEach((boon, i) => {
-    const card = BOON_CARDS[i];
-    const lit = hover === i;
-    const lift = lit ? -8 : 0;
-    const rarity = RARITY[boon.rarity];
-    const cx = card.x + card.w / 2;
-    const top = card.y + lift;
-    ctx.save();
-    ctx.shadowColor = rarity.color;
-    ctx.shadowBlur = lit ? 34 : 16;
-    const body = ctx.createLinearGradient(0, top, 0, top + card.h);
-    body.addColorStop(0, lit ? '#222a40' : '#161b2c');
-    body.addColorStop(1, '#0a0d16');
-    ctx.beginPath();
-    ctx.roundRect(card.x, top, card.w, card.h, 16);
-    ctx.fillStyle = body;
-    ctx.fill();
-    ctx.restore();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = rarity.color;
-    ctx.beginPath();
-    ctx.roundRect(card.x, top, card.w, card.h, 16);
-    ctx.stroke();
-    ctx.lineWidth = 1.4;
-    ctx.strokeStyle = '#d4aa55';
-    ctx.beginPath();
-    ctx.roundRect(card.x + 8, top + 8, card.w - 16, card.h - 16, 11);
-    ctx.stroke();
-    drawFiligree(ctx, card.x + 8, top + 8, card.w - 16, card.h - 16);
-    // Rarity pill.
-    ctx.beginPath();
-    ctx.roundRect(cx - 52, top + 18, 104, 24, 12);
-    ctx.fillStyle = rarity.color;
-    ctx.fill();
-    drawText(ctx, rarity.label, cx, top + 36, { size: 15, color: '#0a0d16', align: 'center', outline: 0 });
-    // Glyph medallion.
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = boon.color;
-    ctx.beginPath();
-    ctx.arc(cx, top + 102, 62, 0, 6.283);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.beginPath();
-    ctx.arc(cx, top + 102, 48, 0, 6.283);
-    ctx.fillStyle = '#0a0d16';
-    ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#d4aa55';
-    ctx.stroke();
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(cx, top + 102, 40, 0, 6.283);
-    ctx.stroke();
-    drawGlyph(ctx, boon.glyph, cx, top + 102, 25, boon.color, 5);
-    const size = boon.name.length > 16 ? 19 : 23;
-    drawText(ctx, boon.name.toUpperCase(), cx, top + 190, { size, color: boon.color, align: 'center' });
-    ctx.font = `700 17px ${FONT}`;
-    wrap(ctx, boon.desc, card.w - 44).forEach((line, n) => {
-      drawText(ctx, line, cx, top + 222 + n * 22, { size: 17, color: '#dfe7ff', align: 'center', weight: 700, outline: 0 });
-    });
-    ctx.font = `700 14px ${FONT}`;
-    wrap(ctx, boon.synergy, card.w - 52).forEach((line, n) => {
-      drawText(ctx, line, cx, top + 276 + n * 17, { size: 14, color: rarity.color, align: 'center', weight: 700, outline: 0 });
-    });
-    const owned = game.boons[boon.id] ?? 0;
-    if (owned > 0) drawText(ctx, `you hold x${owned}`, card.x + 18, top + 316, { size: 13, color: P.muted, outline: 0 });
-    drawText(ctx, `[${i + 1}]`, card.x + card.w - 18, top + 318, { size: 24, color: blink(time, 3) && lit ? '#ffffff' : P.gold, align: 'right' });
-  });
 }
 
 export function drawPause(ctx) {

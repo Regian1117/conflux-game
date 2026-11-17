@@ -66,6 +66,7 @@ export const DIFFICULTIES = [
   { name: 'ARCHMAGE', tag: 'brutal', hp: 1.3, count: 1.3, regen: 0.8, note: 'Creatures have 30% more health and come 30% thicker. Essence refills 20% slower.' },
 ];
 export const DIFFICULTY_KEY = 'conflux.difficulty';
+export const SEED_KEY = 'conflux.seed';
 export const BEST_KEY = 'conflux.best';
 export const RECORD_KEY = 'conflux.chain';
 

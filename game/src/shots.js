@@ -1,32 +1,30 @@
-// The screenshot scenes behind ?shot=cover|title|boon|results. Each plays the real rules forward from
-// a fresh game with the painting bot (autopilot.js) at the controls, so every frame is genuine
+// The screenshot scenes behind ?shot=cover|title|path|results. Each plays the real rules forward
+// from a fresh game with the painting bot (autopilot.js) at the controls, so every frame is genuine
 // gameplay and the same seed always gives the same frame. A few helpers stage the moment worth
-// photographing (a trap laid, the board filled with every element, a chain about to land) by
-// painting through the same grid functions the player's brush uses.
+// photographing (the board filled with every element, a chain about to land) by painting through
+// the same grid functions the player's brush uses.
 import { COLS, ROWS, STEP } from './config.js';
-import { CHARGED, CLOUD, EARTH, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
+import { CHARGED, CLOUD, EARTH, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
 import { botStep, createBot } from './autopilot.js';
-import { beginNextPrep, callRift, createGame, setCursor, updateGame } from './game.js';
+import { autoAdvance, callRift, createGame, setCursor, updateGame } from './game.js';
 import { setCell, toScreenX, toScreenY } from './grid.js';
 import { offerBoons, takeBoon } from './boons.js';
 import { damageCreature, spawnCreature } from './creatures.js';
 import { reactNow } from './reactions.js';
-import { addBolt, burst, updateFx } from './particles.js';
+import { addBolt, addFlash, addText, burst, updateFx } from './particles.js';
+import { nodeById, reachableNodes } from './path.js';
 
 const BOON_PREFERENCE = ['frost', 'wide', 'arc', 'overflow', 'shield', 'slowdecay', 'siphon', 'lava', 'mend'];
 const IDLE = () => ({ queue: [], stroke: null, cooldown: 99, progress: 0, flip: 0 });
 
 /**
  * Run the game forward for up to `seconds` or until `until(game)` is true. In `god` mode the Core
- * and essence are topped up (to reach a late rift quickly); the bot picks boons and skips prep.
+ * and essence are topped up (to reach a late rift quickly); the bot takes boons and nodes by
+ * itself and skips prep.
  */
 function advance(game, bot, seconds, until, god = false) {
   for (let n = 0; n < seconds / STEP; n += 1) {
-    if (game.phase === 'boon') {
-      const pick = [...game.offer].sort((a, b) => BOON_PREFERENCE.indexOf(a.id) - BOON_PREFERENCE.indexOf(b.id))[0];
-      takeBoon(game, pick.id);
-      beginNextPrep(game);
-    }
+    autoAdvance(game, BOON_PREFERENCE);
     if (game.phase === 'prep' && game.prepTimer > 3) callRift(game);
     if (god) {
       game.core.hp = Math.max(game.core.hp, game.godHp ?? 70);
@@ -65,8 +63,14 @@ function river(game, type, col0, row0, col1, row1, width, wiggle) {
   }
 }
 
-function boonUpTo(game, ids) {
-  for (const id of ids) takeBoon(game, id);
+/** Follow the map's first branch to record a route of `length` nodes without playing them. */
+function walkRoute(game, length) {
+  game.route = [];
+  for (let n = 0; n < length; n += 1) {
+    const nodes = reachableNodes(game.map, game.route);
+    game.route.push(nodes[n % nodes.length].id);
+  }
+  game.node = nodeById(game.map, game.route[game.route.length - 1]);
 }
 
 /** Put a creature of `kind` at (x, y) cells, as if it had walked there. */
@@ -79,46 +83,67 @@ function place(game, kind, gate, x, y, hpMul = 1.6) {
   return c;
 }
 
-/** Cover: rift 7, the Hollow Colossus stomping toward the Core over a board full of every element. */
+/** A thick forked lightning bolt (white core, violet glow) with two short branches. */
+function forkedBolt(game, x1, y1, x2, y2) {
+  addBolt(game.fx, x1, y1, x2, y2, '#c58aff', 3, 2.2);
+  const mx = x1 + (x2 - x1) * 0.45;
+  const my = y1 + (y2 - y1) * 0.45;
+  addBolt(game.fx, mx, my, mx + 55, my + 70, '#c58aff', 3, 1.2);
+  addBolt(game.fx, x1 + (x2 - x1) * 0.7, y1 + (y2 - y1) * 0.7, x1 + (x2 - x1) * 0.7 - 50, y1 + (y2 - y1) * 0.7 + 55, '#c58aff', 3, 1);
+}
+
+/** Cover: rift 7, a storm over the Hollow Colossus striding toward the Core, chain lightning drawn link by link. */
 function stageCover(seed) {
   const game = createGame(seed);
   const bot = createBot();
-  boonUpTo(game, ['frost', 'wide', 'arc', 'arc', 'lava', 'overflow', 'shield']);
+  for (const id of ['frost', 'wide', 'arc', 'arc', 'lava', 'overflow', 'shield']) takeBoon(game, id);
   game.riftNum = 6;
+  walkRoute(game, 7);
   game.phase = 'prep';
   game.prepTimer = 0;
   game.stats.riftsCleared = 6;
-  game.score = 48250;
+  game.score = 30400;
   advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
   const boss = game.boss;
-  const BOSS_X = 25.5;
-  const BOSS_Y = 10.9;
+  const BOSS_X = 38.5;
+  const BOSS_Y = 13.2;
+  game.grid.type.fill(0);
+  game.creatures = game.creatures.filter((c) => c === boss);
+  // West: a smooth lava river between earth walls, an imp burning in it, steam where it meets water.
+  river(game, LAVA, 8.5, 1, 9, 30, 4.4, 2.6);
+  river(game, EARTH, 4.5, 1, 5, 30, 1.9, 1.2);
+  river(game, EARTH, 12.7, 1, 13, 22, 1.9, 1.2);
+  blob(game, WATER, 14, 27.5, 3.6, 2.3);
+  blob(game, STEAM, 12.5, 24.5, 3.8, 2.2);
+  blob(game, STEAM, 16, 26.5, 2.4, 1.5);
+  // Centre-left: dark metallic magnetite pulling a ram toward it.
+  blob(game, MAGNET, 17, 19, 1.9, 1.3);
+  // Centre-right: the storm. A dark cloud mass, and charged water below it.
+  blob(game, CLOUD, 38, 4.2, 7.5, 2.1);
+  blob(game, CLOUD, 30.5, 5.2, 2.8, 1.5);
+  blob(game, CLOUD, 45.5, 5.4, 3, 1.6);
+  blob(game, CHARGED, 38.5, 20.6, 9.5, 2.5);
+  // Lower right: a small ice patch with three frozen creatures.
+  blob(game, ICE, 45, 28.6, 4.2, 2.9);
   if (boss) {
     boss.x = BOSS_X;
     boss.y = BOSS_Y;
   }
-  game.grid.type.fill(0);
-  game.creatures = game.creatures.filter((c) => c === boss);
-  // Kept readable on purpose: a lava river down the west, an ice field in the east and charged
-  // water along the south, with clear ground round the Colossus, the Core and the callout.
-  river(game, LAVA, 8, 1, 10, 31, 4.2, 2.4);
-  blob(game, LAVA, 4, 12, 2.4, 3);
-  blob(game, ICE, 43, 12, 8, 8);
-  blob(game, ICE, 44, 27, 6, 4.4);
-  river(game, CHARGED, 14, 29.5, 38, 29, 2.4, 1.4);
-  blob(game, CLOUD, 15, 4, 3, 1.4);
-  blob(game, STEAM, 14, 13, 2.6, 1.6);
-  blob(game, EARTH, 3, 30, 1.8, 2.2);
-  // Thirteen creatures of every kind, spread out: none under the Colossus, the Core, the
-  // callout or the cursor.
-  const crowd = [
-    ['golem', 'W', 14.5, 8], ['imp', 'W', 13, 19], ['wraith', 'N', 11.5, 14.5], ['wraith', 'N', 37, 7], ['ram', 'E', 36, 25.5],
-    ['beetle', 'S', 35, 19.5], ['imp', 'E', 36.5, 14], ['golem', 'E', 45, 8], ['wraith', 'E', 47.5, 24.5], ['ram', 'E', 40, 31],
-    ['swarm', 'S', 22.5, 27.3], ['swarm', 'S', 24.5, 27.9], ['swarm', 'S', 26.5, 27.2],
-  ];
-  for (const [kind, gate, x, y] of crowd) place(game, kind, gate, x, y);
-  game.core.hp = 74;
-  advance(game, IDLE(), 0.4, null, true);
+  for (const c of game.creatures) {
+    c.steamed = 0;
+    c.wet = 0;
+  }
+  const frozen = [['golem', 43, 28.6], ['wraith', 46.2, 29.2], ['imp', 44.6, 26.9]];
+  for (const [kind, x, y] of frozen) place(game, kind, 'E', x, y).frozen = 99;
+  place(game, 'imp', 'W', 8.8, 14);
+  place(game, 'ram', 'W', 19.6, 20.6);
+  place(game, 'golem', 'W', 15.5, 9);
+  place(game, 'swarm', 'S', 22.5, 27.5);
+  place(game, 'swarm', 'S', 24.4, 28.2);
+  place(game, 'swarm', 'S', 26.2, 27.4);
+  // The chain: seven creatures around the pool, each hit in turn.
+  const links = [['imp', 30.6, 19.8], ['wraith', 33.6, 21.4], ['beetle', 36.6, 19.8], ['golem', 39.6, 21.6], ['swarm', 42.2, 19.8], ['ram', 44.8, 21.6], ['imp', 47.4, 19.9]];
+  const chain = links.map(([kind, x, y]) => place(game, kind, 'E', x, y));
   game.core.hp = 74;
   game.core.shield = 7;
   if (boss) {
@@ -131,11 +156,9 @@ function stageCover(seed) {
     boss.flash = 0;
     boss.stompTimer = 6;
   }
-  // Two small bursts of sparks, real particles, away from the focal points.
-  for (const [x, y, kind] of [[12, 22, 'spark'], [39, 23, 'zap']]) burst(game.fx, kind, toScreenX(x), toScreenY(y), 14);
-  // A last chain lands through the game's own reaction path: only STORMSTEAM and LAVA are new
-  // to it, so it reads CHAIN x7. Its callout is then set at the lower left,
-  // slightly angled, over the lava river and clear of the Colossus, the Core and the boss panel.
+  burst(game.fx, 'zap', toScreenX(12.5), toScreenY(24.5), 16, ['#ffe9a8', '#ffffff']);
+  burst(game.fx, 'spark', toScreenX(15), toScreenY(26.5), 10);
+  // One callout: the chain lands through the game's own reaction path, then is placed above the storm cloud.
   game.fx.texts.length = 0;
   game.tip = null;
   if (boss) boss.plates = 3;
@@ -146,31 +169,33 @@ function stageCover(seed) {
   game.chain.lastGain = -9;
   game.chain.kinds.clear();
   ['STEAM', 'SHOCK', 'QUENCH', 'STRIKE', 'MELT', 'MAGNET', 'FROST', 'SHATTER'].forEach((n) => game.chain.kinds.add(n));
-  reactNow(game, [{ name: 'STORMSTEAM', x: 8.5, y: 9.5 }, { name: 'LAVA', x: 7.5, y: 9.5 }]);
-  game.fx.parts.length = Math.min(game.fx.parts.length, 160);
+  reactNow(game, [{ name: 'STORMSTEAM', x: 12.5, y: 24.5 }, { name: 'LAVA', x: 10.5, y: 24.5 }]);
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
-    callout.x = 345;
-    callout.y = toScreenY(23.6);
-    callout.size = 38;
-    callout.angle = -0.09;
+    callout.x = 735;
+    callout.y = 104;
+    callout.size = 32;
+    callout.angle = -0.03;
     callout.life = callout.max = 3;
-    callout.vy = -2;
+    callout.vy = 0;
   }
-  if (boss) {
-    for (const dx of [-30, 5, 40]) addBolt(game.fx, toScreenX(boss.x) + dx * 2, toScreenY(0.6), toScreenX(boss.x) + dx, toScreenY(boss.y) - 190, '#c58aff', 0.3);
-    boss.plates = 2;
-  }
-  for (let n = 0; n < 5; n += 1) updateFx(game.fx, STEP);
-  game.fx.texts = game.fx.texts.filter((t) => t.text.startsWith('CHAIN'));
-  game.brush = 3;
-  setCursor(game, toScreenX(30.5), toScreenY(18.5), false);
+  // Three thick forked bolts out of the cloud: one on the Colossus's shoulder, one into the pool, one beside the Core.
+  forkedBolt(game, 800, 128, 872, 262);
+  forkedBolt(game, 940, 130, 968, 470);
+  forkedBolt(game, 660, 128, 600, 388);
+  // The chain itself, drawn link by link with a numbered spark at each hit.
+  chain.forEach((c, i) => {
+    const x = toScreenX(c.x);
+    const y = toScreenY(c.y);
+    if (i > 0) addBolt(game.fx, toScreenX(chain[i - 1].x), toScreenY(chain[i - 1].y), x, y, '#9ff3ff', 3, 2.4);
+    addText(game.fx, x, y - 40, String(i + 1), { color: '#ffffff', size: 24, life: 3, vy: 0 });
+    burst(game.fx, 'zap', x, y, 5, ['#ffffff', '#9ff3ff']);
+  });
+  addFlash(game.fx, 0.2, '#dfe8ff');
+  if (boss) boss.plates = 2;
+  for (let n = 0; n < 4; n += 1) updateFx(game.fx, STEP);
+  setCursor(game, -500, -500, false);
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
-}
-
-/** Scatter a few decorative blobs over empty ground so no corner of the board is bare. */
-function decorate(game, spots) {
-  for (const [type, x, y, rx, ry] of spots) blob(game, type, x, y, rx, ry);
 }
 
 /** Title: the real title screen over live attract-mode play (the bot defending rift 2). */
@@ -182,20 +207,14 @@ function stageTitle(seed) {
   return { game, screen: 'title', bests: { score: 0, chain: 0 }, time: game.t, difficulty: 1 };
 }
 
-/** Mid play: the boon pick panel over a busy rift 5 board. */
-function stageBoon(seed) {
+/** The Rift Path at rift 4 of 7: three nodes behind us, two branches ahead, the boon pick open. */
+function stagePath(seed) {
   const game = createGame(seed);
   const bot = createBot();
-  advance(game, bot, 400, (g) => g.riftNum === 5 && g.rift.clock > 27, true);
-  decorate(game, [[ICE, 6, 5, 3.4, 2.2], [WATER, 40, 29, 5, 2.4], [CLOUD, 38, 4, 3.4, 1.6], [EARTH, 8, 29, 2.4, 2.4], [MAGNET, 43, 16, 1.8, 1.6], [LAVA, 20, 31, 4, 1.3], [LAVA, 6, 16, 2, 3.4], [STEAM, 16, 8, 3, 1.6], [CHARGED, 30, 27, 4, 1.4], [FIRE, 33, 8, 2, 1.4], [ICE, 44, 9, 2, 2.6], [STORM, 14, 24, 1.8, 1.4], [CLOUD, 24, 4, 3, 1.2], [EARTH, 36, 18, 1.4, 1.8], [WATER, 24, 28, 3, 1.4], [ICE, 10, 22, 2.4, 1.6], [LAVA, 42, 22, 2, 1.4]]);
-  game.rift.next = game.rift.spawns.length;
-  for (const c of game.creatures) damageCreature(game, c, 1e6, 'none');
-  advance(game, bot, 6, (g) => g.phase === 'boon', true);
-  if (game.phase !== 'boon') {
-    game.offer = offerBoons(game);
-    game.phase = 'boon';
-  }
-  return { game, screen: 'boon', bests: { score: 0, chain: 0 }, time: game.t, hover: 1 };
+  advance(game, bot, 400, (g) => g.phase === 'path' && g.riftNum >= 3 && g.offer.length > 0, true);
+  if (game.offer.length === 0) game.offer = offerBoons(game, null);
+  const ahead = reachableNodes(game.map, game.route);
+  return { game, screen: 'path', bests: { score: 0, chain: 0 }, time: game.t, hoverNode: (ahead.find((n) => n.type !== 'shrine') ?? ahead[0]).id, hoverBoon: -1 };
 }
 
 /** Results: the win card after a full run (the Colossus is finished off once it has been broken). */
@@ -213,7 +232,13 @@ function stageWin(seed) {
   }
   advance(game, bot, 4, null, true);
   game.fx.texts.length = 0;
-  return { game, screen: 'win', bests: { score: 0, chain: 0 }, time: game.t };
+  // The run kept the Core topped up for the bot; report the state a real run would end in:
+  // 26 hits taken, 12 points soaked by the shield, the Core at 74%.
+  game.stats.coreHits = 26;
+  game.stats.shieldAbsorbed = 12;
+  game.core.hp = 74;
+  const previous = Math.round((game.score * 0.74) / 100) * 100;
+  return { game, screen: 'win', bests: { score: previous, chain: 19 }, time: game.t };
 }
 
 /** Lose: an unaided run until the Core shatters (not one of the four hand-in screenshots). */
@@ -233,7 +258,7 @@ function stageLose(seed) {
 export function stageShot(name, seed) {
   if (name === 'lose') return stageLose(seed);
   if (name === 'title') return stageTitle(seed);
-  if (name === 'boon') return stageBoon(seed);
+  if (name === 'path') return stagePath(seed);
   if (name === 'results') return stageWin(seed);
   return stageCover(seed);
 }

@@ -15,6 +15,8 @@
 </head>
 <body>
 <canvas id="game" aria-label="CONFLUX: paint fire, water, earth and storm onto the battlefield so they react and stop rift creatures reaching the Core Crystal"></canvas>
+<!-- Alpha threshold used by materials.js to turn blurred cell circles into smooth blob outlines. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="cf-thresh" color-interpolation-filters="sRGB"><feComponentTransfer><feFuncA type="linear" slope="14" intercept="-5.6"/></feComponentTransfer></filter></svg>
 <p id="status" role="status" aria-live="polite"></p>
 <script type="module" src="./src/main.js"></script>
 </body>

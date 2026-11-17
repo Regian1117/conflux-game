@@ -65,50 +65,95 @@ export function drawZigzag(ctx, x1, y1, x2, y2, seed, color, width = 2) {
   ctx.globalAlpha = 1;
 }
 
-/** Add the blob outline for `cells` (cell indices of one type) to the current path. */
-function traceBlob(g, grid, type, cells, dx, dy) {
-  g.beginPath();
-  for (const i of cells) {
-    const col = i % COLS;
-    const row = Math.floor(i / COLS);
-    const x = col * CELL + dx;
-    const y = row * CELL + dy;
-    const l = col > 0 && grid.type[i - 1] === type;
-    const r = col < COLS - 1 && grid.type[i + 1] === type;
-    const u = row > 0 && grid.type[i - COLS] === type;
-    const d = row < ROWS - 1 && grid.type[i + COLS] === type;
-    const rad = 8 + hash(i, 3) * 3;
-    g.roundRect(x - (l ? 0.5 : 1.5), y - (u ? 0.5 : 1.5), CELL + (l ? 0.5 : 1.5) + (r ? 0.5 : 1.5), CELL + (u ? 0.5 : 1.5) + (d ? 0.5 : 1.5), [!l && !u ? rad : 0, !r && !u ? rad : 0, !r && !d ? rad : 0, !l && !d ? rad : 0]);
-    // Little bumps along open edges make the outline organic instead of boxy.
-    if (!u && hash(i, 5) > 0.45) g.moveTo(x + 10 + 6, y - 1), g.arc(x + 10, y - 1, 6, 0, 6.283);
-    if (!d && hash(i, 6) > 0.45) g.moveTo(x + 10 + 5, y + CELL + 1), g.arc(x + 10, y + CELL + 1, 5, 0, 6.283);
-    if (!l && hash(i, 7) > 0.5) g.moveTo(x - 1 + 5, y + 10), g.arc(x - 1, y + 10, 5, 0, 6.283);
-    if (!r && hash(i, 8) > 0.5) g.moveTo(x + CELL + 1 + 6, y + 10), g.arc(x + CELL + 1, y + 10, 6, 0, 6.283);
-  }
+const TAU = Math.PI * 2;
+const masks = new Map();
+let scratch = null;
+let darkened = null;
+
+function newCanvas() {
+  const c = document.createElement('canvas');
+  c.width = FIELD.w;
+  c.height = FIELD.h;
+  return c;
 }
 
-/** The bright rim along every open edge of the blob (drawn inside it). */
-function rim(g, grid, type, cells, color, width) {
-  g.strokeStyle = color;
-  g.lineWidth = width;
-  g.lineCap = 'round';
-  g.beginPath();
-  for (const i of cells) {
-    const col = i % COLS;
-    const row = Math.floor(i / COLS);
-    const x = col * CELL;
-    const y = row * CELL;
-    if (!(col > 0 && grid.type[i - 1] === type)) g.moveTo(x + 1, y + 3), g.lineTo(x + 1, y + CELL - 3);
-    if (!(col < COLS - 1 && grid.type[i + 1] === type)) g.moveTo(x + CELL - 1, y + 3), g.lineTo(x + CELL - 1, y + CELL - 3);
-    if (!(row > 0 && grid.type[i - COLS] === type)) g.moveTo(x + 3, y + 1), g.lineTo(x + CELL - 3, y + 1);
-    if (!(row < ROWS - 1 && grid.type[i + COLS] === type)) g.moveTo(x + 3, y + CELL - 1), g.lineTo(x + CELL - 3, y + CELL - 1);
+/**
+ * Build (or reuse) the smooth blob mask for one element: every cell becomes a blurred circle, an
+ * SVG alpha threshold turns the blurred union into a smooth, curved outline (no stair-steps), and
+ * a dark outline and a pale rim light are derived from it. Rebuilt only when the cells change.
+ */
+function maskFor(type, cells, time) {
+  let entry = masks.get(type);
+  if (!entry) {
+    entry = { sig: '', builtAt: -9, mask: newCanvas(), outline: newCanvas(), rim: newCanvas() };
+    masks.set(type, entry);
   }
-  g.stroke();
+  let hashed = 0;
+  for (const i of cells) hashed = (hashed * 31 + i) | 0;
+  const sig = `${cells.length}:${hashed}`;
+  if (entry.sig === sig || (entry.sig !== '' && time - entry.builtAt < 0.08)) return entry;
+  entry.sig = sig;
+  entry.builtAt = time;
+  scratch ??= newCanvas();
+  darkened ??= newCanvas();
+  const sg = scratch.getContext('2d');
+  sg.clearRect(0, 0, FIELD.w, FIELD.h);
+  sg.filter = 'blur(5px)';
+  sg.fillStyle = '#ffffff';
+  sg.beginPath();
+  for (const i of cells) {
+    const cx = (i % COLS) * CELL + 10;
+    const cy = Math.floor(i / COLS) * CELL + 10;
+    sg.moveTo(cx + 12.5, cy);
+    sg.arc(cx, cy, 12.5, 0, TAU);
+  }
+  sg.fill();
+  sg.filter = 'none';
+  const m = entry.mask.getContext('2d');
+  m.clearRect(0, 0, FIELD.w, FIELD.h);
+  m.filter = 'url(#cf-thresh)';
+  m.drawImage(scratch, 0, 0);
+  m.filter = 'none';
+  // Near-black silhouette of the mask, stamped around it for a crisp outline.
+  const d = darkened.getContext('2d');
+  d.globalCompositeOperation = 'source-over';
+  d.clearRect(0, 0, FIELD.w, FIELD.h);
+  d.drawImage(entry.mask, 0, 0);
+  d.globalCompositeOperation = 'source-in';
+  d.fillStyle = '#05060a';
+  d.fillRect(0, 0, FIELD.w, FIELD.h);
+  d.globalCompositeOperation = 'source-over';
+  const o = entry.outline.getContext('2d');
+  o.clearRect(0, 0, FIELD.w, FIELD.h);
+  if (type === ICE) {
+    o.shadowColor = 'rgba(168,230,255,0.8)';
+    o.shadowBlur = 14;
+    o.drawImage(entry.mask, 0, 0);
+    o.shadowBlur = 0;
+    o.shadowColor = 'transparent';
+  }
+  if (type === EARTH) {
+    o.globalAlpha = 0.5;
+    o.drawImage(darkened, 3, 6);
+    o.globalAlpha = 1;
+  }
+  for (let k = 0; k < 8; k += 1) o.drawImage(darkened, Math.cos((k / 8) * TAU) * 2.8, Math.sin((k / 8) * TAU) * 2.8);
+  const r = entry.rim.getContext('2d');
+  r.globalCompositeOperation = 'source-over';
+  r.clearRect(0, 0, FIELD.w, FIELD.h);
+  r.drawImage(entry.mask, 0, 0);
+  r.globalCompositeOperation = 'destination-out';
+  r.drawImage(entry.mask, 3, 3);
+  r.globalCompositeOperation = 'source-in';
+  r.fillStyle = RIMS[type];
+  r.fillRect(0, 0, FIELD.w, FIELD.h);
+  r.globalCompositeOperation = 'source-over';
+  return entry;
 }
 
 const ICE_TONES = ['#f2fdff', '#c9ecfb', '#9bd6f2', '#69b0de', '#dff6ff', '#7cc3ea', '#4f8fc8', '#ffffff'];
-const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARGED]: '#1590c4', [ICE]: '#6fb8e0', [EARTH]: '#5d4528', [STORM]: '#2a1470', [MAGNET]: '#241c2c', [CLOUD]: '#2d2570' };
-const RIMS = { [FIRE]: '#ffd24a', [LAVA]: '#ff8a2a', [WATER]: '#bff2ff', [CHARGED]: '#ffffff', [ICE]: '#ffffff', [EARTH]: '#b09258', [STORM]: '#ffe23a', [MAGNET]: '#ff6a86', [CLOUD]: '#b9a8ff' };
+const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARGED]: '#1590c4', [ICE]: '#6fb8e0', [EARTH]: '#5d4528', [STORM]: '#1a2850', [MAGNET]: '#26222c', [CLOUD]: '#2a3350' };
+const RIMS = { [FIRE]: '#ffd24a', [LAVA]: '#ff8a2a', [WATER]: '#bff2ff', [CHARGED]: '#ffffff', [ICE]: '#ffffff', [EARTH]: '#b09258', [STORM]: '#ffe23a', [MAGNET]: '#c9ccd8', [CLOUD]: '#b9a8ff' };
 
 /** Per-element detail painting, in layer coordinates, clipped to the blob by source-atop. */
 const DETAILS = {
@@ -238,7 +283,7 @@ const DETAILS = {
     for (const i of cells) {
       const x = (i % COLS) * CELL;
       const y = Math.floor(i / COLS) * CELL;
-      g.fillStyle = `rgba(166,92,255,${0.4 + 0.3 * Math.sin(t * 8 + i)})`;
+      g.fillStyle = `rgba(90,140,255,${0.4 + 0.3 * Math.sin(t * 8 + i)})`;
       g.fillRect(x, y, CELL, CELL);
       g.strokeStyle = '#ffe23a';
       g.lineWidth = 2.6;
@@ -253,24 +298,30 @@ const DETAILS = {
   },
   [MAGNET](g, cells, t) {
     for (const i of cells) {
-      const x = (i % COLS) * CELL + 10;
-      const y = Math.floor(i / COLS) * CELL + 10;
-      g.fillStyle = '#3b3346';
-      g.fillRect(x - 10, y - 10, CELL, 6);
-      for (const [k, color] of [[0, '#ff4d6a'], [1, '#5a8cff']]) {
-        g.strokeStyle = color;
-        g.lineWidth = 2;
-        g.beginPath();
-        g.arc(x + (k ? 4 : -4), y + 2, 6 + k, t * 2 + k * 3 + hash(i, 1) * 6, t * 2 + k * 3 + hash(i, 1) * 6 + 3.2);
-        g.stroke();
-      }
+      const x = (i % COLS) * CELL;
+      const y = Math.floor(i / COLS) * CELL;
+      const sheen = g.createLinearGradient(x, y, x + CELL, y + CELL);
+      sheen.addColorStop(0, '#6a6674');
+      sheen.addColorStop(0.5, '#2e2a36');
+      sheen.addColorStop(1, '#17141c');
+      g.fillStyle = sheen;
+      g.fillRect(x, y, CELL, CELL);
+      g.fillStyle = '#d0d3e0';
+      for (let k = 0; k < 3; k += 1) g.fillRect(x + 2 + hash(i, k) * 15, y + 2 + hash(i, k + 5) * 15, 2, 2);
+      g.fillStyle = '#0c0a10';
+      g.fillRect(x + 3 + hash(i, 9) * 10, y + 8 + hash(i, 10) * 8, 5, 3);
+      g.strokeStyle = `rgba(255,${90 + 60 * Math.sin(t * 2 + i)},120,0.6)`;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.arc(x + 10, y + 10, 6, t * 2 + hash(i, 1) * 6, t * 2 + hash(i, 1) * 6 + 2.4);
+      g.stroke();
     }
   },
   [CLOUD](g, cells, t) {
     for (const i of cells) {
       const x = (i % COLS) * CELL;
       const y = Math.floor(i / COLS) * CELL;
-      g.fillStyle = 'rgba(150,130,255,0.5)';
+      g.fillStyle = 'rgba(160,175,215,0.55)';
       g.beginPath();
       g.arc(x + 6 + Math.sin(t + i) * 2, y + 8, 6, 0, 6.283);
       g.arc(x + 14, y + 11 - Math.sin(t * 1.3 + i) * 2, 7, 0, 6.283);
@@ -315,10 +366,10 @@ function etchGlyphs(g, grid, type, cells) {
 const GLOW = {
   [FIRE]: ['#ff8a2a', 0.55, 78],
   [LAVA]: ['#ff6a14', 0.6, 84],
-  [STORM]: ['#a65cff', 0.5, 74],
+  [STORM]: ['#8fb0ff', 0.5, 74],
   [CHARGED]: ['#6fe8ff', 0.5, 74],
-  [CLOUD]: ['#8f7aff', 0.3, 64],
-  [MAGNET]: ['#ff5d7a', 0.22, 56],
+  [CLOUD]: ['#7f98d8', 0.3, 64],
+  [MAGNET]: ['#ff6a86', 0.08, 50],
   [ICE]: ['#a8e6ff', 0.2, 60],
   [WATER]: ['#22a8ff', 0.12, 56],
 };
@@ -422,6 +473,33 @@ function drawIceExtras(ctx, grid, cells, t) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/** Swirling field lines spiralling in toward a magnetite cluster, pulling whatever stands near it. */
+function drawFieldLines(ctx, cells, t) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineWidth = 2.2;
+  ctx.setLineDash([9, 7]);
+  ctx.lineDashOffset = t * 26;
+  cells.forEach((i, n) => {
+    if (n % 3 !== 0) return;
+    const cx = FIELD.x + (i % COLS) * CELL + 10;
+    const cy = FIELD.y + Math.floor(i / COLS) * CELL + 10;
+    [['rgba(255,110,140,0.6)', 0], ['rgba(110,160,255,0.6)', Math.PI]].forEach(([color, phase]) => {
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      for (let a = 0; a < 7.5; a += 0.25) {
+        const r = 78 - 60 * (a / 7.5);
+        const px = cx + Math.cos(a + phase) * r;
+        const py = cy + Math.sin(a + phase) * r * 0.85;
+        if (a === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    });
+  });
+  ctx.restore();
+}
+
 /** Paint every painted cell of the grid as materials. `time` is seconds, for the animation. */
 export function drawMaterials(ctx, game, time) {
   const grid = game.grid;
@@ -442,39 +520,25 @@ export function drawMaterials(ctx, game, time) {
   for (const type of [WATER, CHARGED, ICE, EARTH, MAGNET, LAVA, FIRE, STORM, CLOUD]) {
     const cells = lists[type];
     if (cells.length === 0) continue;
-    if (type === EARTH) {
-      traceBlob(ctx, grid, type, cells, FIELD.x + 3, FIELD.y + 5);
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fill();
-    }
-    traceBlob(ctx, grid, type, cells, FIELD.x, FIELD.y);
-    if (type === ICE) {
-      ctx.strokeStyle = 'rgba(168,230,255,0.3)';
-      ctx.lineWidth = 11;
-      ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
+    const entry = maskFor(type, cells, time);
+    ctx.drawImage(entry.outline, FIELD.x, FIELD.y);
     const layer = layerFor(type);
     const g = layer.getContext('2d');
-    g.clearRect(0, 0, FIELD.w, FIELD.h);
     g.globalCompositeOperation = 'source-over';
-    traceBlob(g, grid, type, cells, 0, 0);
-    g.fillStyle = '#ffffff';
-    g.fill();
-    g.globalCompositeOperation = 'source-in';
+    g.clearRect(0, 0, FIELD.w, FIELD.h);
     g.fillStyle = BASES[type];
     g.fillRect(0, 0, FIELD.w, FIELD.h);
-    g.globalCompositeOperation = 'source-atop';
     DETAILS[type](g, cells, time);
     etchGlyphs(g, grid, type, cells);
-    rim(g, grid, type, cells, RIMS[type], 3.2);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(entry.mask, 0, 0);
     g.globalCompositeOperation = 'source-over';
-    // Fade cells that are about to expire: blink handled by the per-cell life below.
     ctx.drawImage(layer, FIELD.x, FIELD.y);
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(entry.rim, FIELD.x, FIELD.y);
+    ctx.globalAlpha = 1;
     if (type === ICE) drawIceExtras(ctx, grid, cells, time);
+    if (type === MAGNET) drawFieldLines(ctx, cells, time);
   }
 
   // Cells about to expire blink, so the player sees what is fading.
@@ -485,14 +549,6 @@ export function drawMaterials(ctx, game, time) {
     }
   }
 
-  ctx.globalCompositeOperation = 'lighter';
-  for (const type of [FIRE, LAVA, STORM, CHARGED]) {
-    ctx.globalAlpha = type === LAVA ? 0.16 : 0.22;
-    ctx.fillStyle = ELEMENTS[type].glow;
-    for (const i of lists[type]) ctx.fillRect(FIELD.x + (i % COLS) * CELL + 3, FIELD.y + Math.floor(i / COLS) * CELL + 3, CELL - 6, CELL - 6);
-  }
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
   drawSteam(ctx, lists[STEAM], time);
   drawBolts(ctx, lists[CLOUD], lists[CHARGED], time);
 }

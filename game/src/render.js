@@ -175,12 +175,15 @@ function drawCore(ctx, game, time) {
   const x = toScreenX(CORE.col + 0.5);
   const y = toScreenY(CORE.row + 0.5);
   const flash = game.core.hitFlash > 0;
-  const tint = flash ? '#ff4060' : '#6ff0ff';
+  const tint = flash ? '#ff4060' : '#ffe3a0';
   ctx.save();
   ctx.translate(x, y);
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.12;
   ctx.drawImage(glowSprite(tint), -110, -120, 220, 220);
+  ctx.globalAlpha = flash ? 0.3 : 0.5;
+  ctx.drawImage(glowSprite(flash ? '#ff6070' : '#fff0c0'), -190, -205, 380, 380);
+  ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.12;
   for (let k = 0; k < 9; k += 1) {
     const a = time * 0.25 + (k / 9) * 6.283;
     ctx.globalAlpha = 0.13;
@@ -206,12 +209,12 @@ function drawCore(ctx, game, time) {
   ctx.translate(0, bob - 6);
   const P = [[0, -66], [22, -28], [17, 18], [0, 34], [-17, 18], [-22, -28]];
   const facets = [
-    [[0, -66], [-22, -28], [0, -22], '#e4fdff'],
-    [[0, -66], [22, -28], [0, -22], '#8cf0ff'],
-    [[-22, -28], [-17, 18], [0, -22], '#3fc4e0'],
-    [[22, -28], [17, 18], [0, -22], '#1f93b4'],
-    [[-17, 18], [0, 34], [0, -22], '#2aa8c8'],
-    [[17, 18], [0, 34], [0, -22], '#136f90'],
+    [[0, -66], [-22, -28], [0, -22], '#ffffff'],
+    [[0, -66], [22, -28], [0, -22], '#fff0c8'],
+    [[-22, -28], [-17, 18], [0, -22], '#bff4ff'],
+    [[22, -28], [17, 18], [0, -22], '#8fdcf0'],
+    [[-17, 18], [0, 34], [0, -22], '#a8e8f8'],
+    [[17, 18], [0, 34], [0, -22], '#6cc4e0'],
   ];
   for (const [a, b, c, fill] of facets) {
     ctx.beginPath();
@@ -299,6 +302,11 @@ function drawBloomAndGrain(ctx) {
   ctx.fillStyle = grain;
   ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
   ctx.globalAlpha = 1;
+  const vignette = ctx.createRadialGradient(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.h * 0.38, FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.w * 0.62);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.42)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
 }
 
 /** Paint the whole battlefield for this frame (inside the FIELD rectangle, with screen shake). */

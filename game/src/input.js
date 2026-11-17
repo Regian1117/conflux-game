@@ -2,7 +2,7 @@
 // the window scales it to; key presses and clicks are queued so the loop takes each exactly once.
 import { H, W } from './config.js';
 
-const HANDLED = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Space', 'Enter', 'KeyP', 'Escape', 'KeyM', 'KeyR', 'KeyH', 'ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'KeyT']);
+const HANDLED = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Space', 'Enter', 'KeyP', 'Escape', 'KeyM', 'KeyR', 'KeyH', 'ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'KeyT', 'KeyQ', 'KeyS']);
 
 export function createInput(canvas) {
   const pointer = { x: 0, y: 0, down: false };

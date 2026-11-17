@@ -15,6 +15,9 @@ export const BOONS = [
   { id: 'siphon', name: 'Kill Siphon', desc: 'Kills return 60% more essence.', synergy: 'Pairs with Swarm kills.', glyph: 'spiral', rarity: 'epic', color: '#c58aff', icon: 'K', max: 2 },
 ];
 
+/** Essence taken from every pool for a reroll when no free reroll is held. */
+export const REROLL_COST = 40;
+
 export const RARITY = {
   common: { label: 'COMMON', color: '#9fb3d9' },
   rare: { label: 'RARE', color: '#4aa8ff' },
@@ -45,10 +48,19 @@ export function deriveMods(game) {
 }
 
 /** Pick three different boons that are not yet maxed. */
-export function offerBoons(game) {
+export function offerBoons(game, bias = null) {
   const pool = BOONS.filter((b) => (game.boons[b.id] ?? 0) < b.max);
   const offer = [];
   while (offer.length < 3 && pool.length > 0) offer.push(pool.splice(game.rng.int(pool.length), 1)[0]);
+  // A rare or epic rift guarantees a boon of at least that rarity.
+  if (bias) {
+    const order = ['common', 'rare', 'epic'];
+    const need = order.indexOf(bias);
+    if (!offer.some((b) => order.indexOf(b.rarity) >= need)) {
+      const candidates = BOONS.filter((b) => (game.boons[b.id] ?? 0) < b.max && order.indexOf(b.rarity) >= need && !offer.includes(b));
+      if (candidates.length > 0) offer[0] = candidates[game.rng.int(candidates.length)];
+    }
+  }
   return offer;
 }
 

@@ -9,6 +9,7 @@ import { drawCreatureSprite } from './sprites.js';
 import { BOONS } from './boons.js';
 import { chainMult, reactionGrade } from './score.js';
 import { RIFT_PLANS, upcoming } from './rifts.js';
+import { NODE_TYPES } from './path.js';
 import { drawBar, drawPanel, drawText, formatNumber } from './draw.js';
 import { isMuted } from './audio.js';
 import { drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
@@ -39,7 +40,8 @@ function drawRiftBlock(ctx, game) {
   drawPanel(ctx, 12, 8, 214, 68);
   const number = Math.min(RIFT_COUNT, game.phase === 'prep' ? game.riftNum + 1 : Math.max(1, game.riftNum));
   drawText(ctx, `RIFT ${number}/${RIFT_COUNT}`, 24, 42, { size: 34, color: '#ffd9a0' });
-  drawText(ctx, RIFT_PLANS[number - 1].title, 24, 62, { size: 12, color: P.muted, weight: 700, outline: 0 });
+  const node = game.node && game.phase !== 'path' ? NODE_TYPES[game.node.type] : null;
+  drawText(ctx, node ? node.name : RIFT_PLANS[number - 1].title, 24, 62, { size: 12, color: node ? node.color : P.muted, weight: 700, outline: 0 });
   const rift = game.rift;
   const left = rift ? rift.total - rift.next + game.creatures.length : 0;
   const ratio = rift && game.phase !== 'prep' ? 1 - left / rift.total : 0;
@@ -54,20 +56,20 @@ function drawQueue(ctx, game, time, x0, w) {
   ctx.rect(x0 + 2, 8, w - 4, 68);
   ctx.clip();
   drawText(ctx, 'INCOMING', x0 + 12, 26, { size: 13, color: P.muted, outline: 0 });
-  const groups = upcoming(game, Math.max(1, Math.floor((w - 24) / 112)));
+  const groups = upcoming(game, Math.max(1, Math.floor((w - 24) / 166)));
   let x = x0 + 12;
   if (groups.length === 0) {
     drawText(ctx, game.phase === 'clear' || game.phase === 'boon' || game.phase === 'won' ? 'rift cleared' : game.rift && !game.rift.done ? 'all creatures are out - finish them!' : 'last creatures on the field', x, 46, { size: 16, color: P.muted, outline: 0 });
   }
   for (const g of groups) {
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
     ctx.beginPath();
-    ctx.roundRect(x - 4, 30, 108, 24, 6);
+    ctx.roundRect(x - 4, 29, 158, 30, 7);
     ctx.fill();
-    drawCreatureSprite(ctx, g.kind, x + 12, 42, g.kind === 'colossus' ? 7 : 9, 0, {});
-    drawText(ctx, `x${g.count}`, x + 28, 49, { size: 18, color: '#ffffff' });
-    drawText(ctx, g.gate[0], x + 80, 49, { size: 14, color: '#ff9af5' });
-    x += 112;
+    drawCreatureSprite(ctx, g.kind, x + 16, 46, g.kind === 'colossus' ? 9 : 13, 0, {});
+    drawText(ctx, `x${g.count}`, x + 40, 52, { size: 22, color: '#ffffff' });
+    drawText(ctx, g.gate, x + 84, 51, { size: 14, color: '#ffc27a' });
+    x += 166;
   }
   const next = groups[0];
   let line;
@@ -233,7 +235,7 @@ function keycap(ctx, label, x, y, w) {
 }
 
 /** The control bar along the bottom: keycaps with their actions, and the WIN / LOSE reminder. */
-function drawKeyBar(ctx) {
+export function drawKeyBar(ctx) {
   const y = H - 42;
   ctx.fillStyle = 'rgba(5,6,10,0.85)';
   ctx.fillRect(0, H - 48, W, 48);

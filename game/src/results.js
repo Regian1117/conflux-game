@@ -7,6 +7,7 @@ import { drawColossus } from './colossus.js';
 import { drawText, formatNumber } from './draw.js';
 import { drawFiligree, drawGlyph, GLYPH_COLORS } from './glyphs.js';
 import { gradeFor } from './score.js';
+import { routeSummary } from './path.js';
 
 /** The two buttons (also click targets). */
 export const AGAIN_BUTTON = { x: 250, y: 706, w: 470, h: 76 };
@@ -29,47 +30,93 @@ function risingGold(ctx, time, count) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-/** Backdrop for a win: the shattered Colossus, rim lit, its broken plates scattered, gold rising. */
-function winBackdrop(ctx, time) {
-  ctx.fillStyle = '#0a0b12';
-  ctx.fillRect(0, 0, W, H);
+/** Soft golden rays fanning out from (x, y), slowly turning: wedges that fade with distance. */
+function radialRays(ctx, x, y, time, count, length) {
+  ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 10; k += 1) {
-    const x = 60 + k * 128 + Math.sin(time + k) * 12;
-    const beam = ctx.createLinearGradient(x, H, x, 0);
-    beam.addColorStop(0, 'rgba(255,210,120,0.32)');
-    beam.addColorStop(1, 'rgba(255,210,120,0)');
-    ctx.fillStyle = beam;
-    ctx.fillRect(x - 26, 0, 52, H);
+  for (let k = 0; k < count; k += 1) {
+    const a = time * 0.08 + (k / count) * 6.283;
+    const width = 0.05 + 0.03 * Math.sin(k * 3.1);
+    const grad = ctx.createRadialGradient(x, y, 20, x, y, length);
+    grad.addColorStop(0, 'rgba(255,214,120,0.42)');
+    grad.addColorStop(1, 'rgba(255,170,60,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, length, a - width, a + width);
+    ctx.closePath();
+    ctx.fill();
   }
-  const halo = ctx.createRadialGradient(W / 2, 430, 20, W / 2, 430, 560);
-  halo.addColorStop(0, 'rgba(255,190,90,0.7)');
-  halo.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.restore();
+}
+
+/** A broken armour plate lying on the floor: an angular slab with a glowing edge. */
+function fallenPlate(ctx, x, y, angle, scale, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+  ctx.beginPath();
+  ctx.moveTo(-46, -10);
+  ctx.lineTo(-18, -26);
+  ctx.lineTo(34, -18);
+  ctx.lineTo(48, 8);
+  ctx.lineTo(10, 26);
+  ctx.lineTo(-38, 16);
+  ctx.closePath();
+  ctx.fillStyle = '#2a2d3c';
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#05060a';
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.85;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.16;
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Backdrop for a win: the Colossus fallen on its back, cracked and lit gold from its chest, plates scattered. */
+function winBackdrop(ctx, time) {
+  const ground = ctx.createLinearGradient(0, 0, 0, H);
+  ground.addColorStop(0, '#0a0b12');
+  ground.addColorStop(1, '#15121a');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, W, H);
+  const chestX = W / 2 - 80;
+  const chestY = 470;
+  ctx.globalCompositeOperation = 'lighter';
+  const halo = ctx.createRadialGradient(chestX, chestY, 10, chestX, chestY, 620);
+  halo.addColorStop(0, 'rgba(255,200,110,0.75)');
+  halo.addColorStop(0.35, 'rgba(255,140,50,0.3)');
+  halo.addColorStop(1, 'rgba(255,100,30,0)');
   ctx.fillStyle = halo;
   ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(W / 2 + 40, 690, 520, 70, 0, 0, 6.283);
+  ctx.fill();
+  radialRays(ctx, chestX, chestY, time, 22, 760);
   ctx.save();
-  ctx.translate(W / 2, 470);
-  drawColossus(ctx, 168, time, { ruin: true, plates: 4 });
+  ctx.translate(W / 2 + 40, 520);
+  ctx.rotate(-Math.PI / 2 + 0.06);
+  drawColossus(ctx, 150, time, { ruin: true, plates: 4 });
   ctx.restore();
-  for (let k = 0; k < 26; k += 1) {
-    const x = 30 + ((k * 331) % 1220);
-    const y = 560 + ((k * 97) % 200);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(k);
-    ctx.fillStyle = PLATES[k % 4].color;
-    ctx.beginPath();
-    ctx.moveTo(0, -14);
-    ctx.lineTo(19, 9);
-    ctx.lineTo(-13, 11);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(-20, -20, 40, 40);
-    ctx.restore();
-  }
-  risingGold(ctx, time, 140);
+  ctx.globalCompositeOperation = 'lighter';
+  const chestGlow = ctx.createRadialGradient(chestX, chestY, 5, chestX, chestY, 150);
+  chestGlow.addColorStop(0, 'rgba(255,230,150,0.8)');
+  chestGlow.addColorStop(1, 'rgba(255,160,50,0)');
+  ctx.fillStyle = chestGlow;
+  ctx.fillRect(chestX - 160, chestY - 160, 320, 320);
+  ctx.globalCompositeOperation = 'source-over';
+  [[120, 640, 0.4, 0], [330, 735, -0.3, 1], [1090, 700, 0.6, 2], [940, 640, -0.5, 3], [60, 400, 1.2, 1], [1200, 330, -0.9, 0], [200, 250, 0.2, 2], [1120, 560, 0.1, 3]].forEach(([x, y, angle, k]) => fallenPlate(ctx, x, y, angle, 0.9, PLATES[k].color));
+  risingGold(ctx, time, 150);
 }
 
 /** Backdrop for a loss: the Core Crystal in pieces under a red glow. */
@@ -109,7 +156,7 @@ function loseBackdrop(ctx, time) {
 function panel(ctx, x, y, w, h, color) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 14);
-  ctx.fillStyle = 'rgba(8,10,18,0.74)';
+  ctx.fillStyle = 'rgba(8,10,18,0.42)';
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = color;
@@ -117,10 +164,11 @@ function panel(ctx, x, y, w, h, color) {
   drawFiligree(ctx, x + 2, y + 2, w - 4, h - 4);
 }
 
-function statTile(ctx, x, y, label, value, color) {
+function statTile(ctx, x, y, label, value, color, sub) {
   panel(ctx, x, y, 290, 88, color);
   drawText(ctx, label, x + 145, y + 26, { size: 15, color: '#c9d2e8', align: 'center', outline: 0 });
-  drawText(ctx, value, x + 145, y + 72, { size: 42, color, align: 'center' });
+  drawText(ctx, value, x + 145, sub ? y + 62 : y + 72, { size: sub ? 36 : 42, color, align: 'center' });
+  if (sub) drawText(ctx, sub, x + 145, y + 81, { size: 13, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
 }
 
 /** The ornate grade medallion: gold rings, rays and the grade (or the rift reached). */
@@ -166,6 +214,7 @@ function medallion(ctx, cx, cy, label, color, grade, time) {
 
 /** Horizontal bars of how often each reaction fired, in its element colour. */
 function reactionChart(ctx, stats, x, y, w, h, accent) {
+  const rowGap = (h - 70) / 6;
   panel(ctx, x, y, w, h, accent);
   drawText(ctx, 'REACTIONS USED', x + 24, y + 38, { size: 24, color: '#ffffff' });
   const by = stats.byReaction;
@@ -179,7 +228,7 @@ function reactionChart(ctx, stats, x, y, w, h, accent) {
   ];
   const max = Math.max(1, ...rows.map((r) => r[2]));
   rows.forEach(([kind, name, count], i) => {
-    const ry = y + 62 + i * 38;
+    const ry = y + 54 + i * rowGap;
     const color = GLYPH_COLORS[kind];
     drawGlyph(ctx, kind, x + 38, ry + 14, 12, color, 3);
     drawText(ctx, name, x + 62, ry + 21, { size: 15, color: '#e6ecff', outline: 2 });
@@ -224,20 +273,33 @@ export function drawResults(ctx, game, bests, won, time) {
   drawText(ctx, won ? 'CONFLUX MASTERED' : 'THE CORE SHATTERS', W / 2, 122, { size: 116, color: accent, align: 'center' });
   drawText(ctx, won ? `All ${RIFT_COUNT} rifts sealed. The Hollow Colossus is hollow no more.` : `The rifts broke through on rift ${Math.max(1, game.riftNum)} of ${RIFT_COUNT}.`, W / 2, 166, { size: 24, color: '#ffffff', align: 'center' });
 
+  const route = game.route.length > 0 ? routeSummary(game.map, game.route) : 'none';
+  drawText(ctx, `Path: ${route}   -   Seed ${game.seed}`, W / 2, 202, { size: 21, color: '#ffe9a8', align: 'center' });
   const grade = won ? gradeFor(game) : null;
   const label = won ? grade : `${Math.max(1, game.riftNum)}/${RIFT_COUNT}`;
   const medal = won ? GRADE_COLORS[grade] : '#ff7a8a';
-  medallion(ctx, 200, 340, label, medal, Boolean(won), time);
-  drawText(ctx, won ? 'GRADE' : 'RIFT REACHED', 200, 492, { size: 20, color: '#ffffff', align: 'center' });
+  medallion(ctx, 200, 356, label, medal, Boolean(won), time);
+  drawText(ctx, won ? 'GRADE' : 'RIFT REACHED', 200, 500, { size: 20, color: '#ffffff', align: 'center' });
 
-  panel(ctx, 380, 190, 330, 260, accent);
-  drawText(ctx, 'SCORE', 545, 232, { size: 20, color: '#c9d2e8', align: 'center', outline: 0 });
-  drawText(ctx, formatNumber(game.score), 545, 320, { size: 76, color: '#ffe9a8', align: 'center' });
-  const best = Math.max(bests.score, game.score);
+  panel(ctx, 380, 222, 330, 240, accent);
+  drawText(ctx, 'SCORE', 545, 262, { size: 20, color: '#c9d2e8', align: 'center', outline: 0 });
+  drawText(ctx, formatNumber(game.score), 545, 350, { size: 76, color: '#ffe9a8', align: 'center' });
   const isBest = game.score >= bests.score && game.score > 0;
-  drawText(ctx, isBest ? 'NEW BEST SCORE!' : 'BEST SCORE', 545, 366, { size: 26, color: isBest ? '#6dffb0' : '#ffffff', align: 'center' });
-  drawText(ctx, formatNumber(best), 545, 412, { size: 40, color: '#ffffff', align: 'center' });
-  reactionChart(ctx, stats, 730, 190, 510, 280, accent);
+  drawText(ctx, bests.score > 0 ? `previous best ${formatNumber(bests.score)}` : 'first run on record', 545, 396, { size: 19, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
+  if (isBest) {
+    // A small ribbon across the panel's top-right corner.
+    ctx.save();
+    ctx.translate(676, 244);
+    ctx.rotate(0.6);
+    ctx.fillStyle = '#2a9a5a';
+    ctx.fillRect(-58, -13, 116, 26);
+    ctx.strokeStyle = '#baffd0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-58, -13, 116, 26);
+    drawText(ctx, 'NEW BEST', 0, 6, { size: 15, color: '#ffffff', align: 'center', outline: 0 });
+    ctx.restore();
+  }
+  reactionChart(ctx, stats, 730, 222, 510, 252, accent);
 
   const diff = DIFFICULTIES[game.difficulty ?? 1].name;
   const tiles = [
@@ -248,9 +310,9 @@ export function drawResults(ctx, game, bests, won, time) {
     ['DIFFICULTY', diff, '#c58aff'],
     ['TIME', formatTime(game.t), '#ffffff'],
     [won ? 'CORE HEALTH LEFT' : 'CHAIN RECORD', won ? `${Math.ceil(game.core.hp)}%` : `x${Math.max(bests.chain, stats.bestChain)}`, '#6ff0ff'],
-    ['CORE HITS TAKEN', String(stats.coreHits), '#ff7a8a'],
+    ['CORE HITS TAKEN', String(stats.coreHits), '#ff7a8a', `${Math.round(stats.shieldAbsorbed)} absorbed by the shield`],
   ];
-  tiles.forEach((t, i) => statTile(ctx, 30 + (i % 4) * 310, 506 + Math.floor(i / 4) * 100, t[0], t[1], t[2]));
+  tiles.forEach((t, i) => statTile(ctx, 30 + (i % 4) * 310, 506 + Math.floor(i / 4) * 100, t[0], t[1], t[2], t[3]));
 
   button(ctx, AGAIN_BUTTON, won ? 'PLAY AGAIN (R)' : 'TRY AGAIN (R)', won ? '#ffd24a' : '#ff6a7a', won ? '#e8780f' : '#c4203a', accent, time);
   button(ctx, TITLE_BUTTON, 'TITLE (T)', '#9ad4ff', '#4a7fd0', '#6aa8ff', time);

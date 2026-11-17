@@ -11,7 +11,7 @@ const TAU = Math.PI * 2;
 const GLOW_COLORS = {
   imp: 'rgba(255,90,30,0.45)',
   golem: 'rgba(255,170,60,0.28)',
-  wraith: 'rgba(170,110,255,0.5)',
+  wraith: 'rgba(130,200,255,0.5)',
   beetle: 'rgba(190,120,255,0.42)',
   swarm: 'rgba(255,150,50,0.45)',
   ram: 'rgba(120,220,255,0.3)',
@@ -178,7 +178,7 @@ function paintWraith(ctx, r, t, st, flash) {
     const x0 = (k - 2) * 0.3 * r;
     const sway = Math.sin(t * 3 + k * 1.3) * 0.28 * r;
     for (const [w, a] of [[0.34, 0.16], [0.22, 0.3], [0.1, 0.5]]) {
-      ctx.strokeStyle = `rgba(200,180,255,${a})`;
+      ctx.strokeStyle = `rgba(190,225,255,${a})`;
       ctx.lineWidth = w * r;
       ctx.beginPath();
       ctx.moveTo(x0, 0.4 * r);
@@ -189,9 +189,9 @@ function paintWraith(ctx, r, t, st, flash) {
   ctx.save();
   ctx.globalAlpha = 0.88;
   smooth(ctx, scaled(r, [[0, -1.3], [0.45, -0.85], [0.78, 0.0], [0.6, 0.85], [0.25, 0.65], [0, 0.95], [-0.25, 0.65], [-0.6, 0.85], [-0.78, 0.0], [-0.45, -0.85]]));
-  solid(ctx, r, '#efe6ff', '#6a4fc0', '#ffffff', flash, 2.8);
+  solid(ctx, r, '#eaf6ff', '#4a7aa8', '#ffffff', flash, 2.8);
   ctx.restore();
-  ctx.strokeStyle = 'rgba(120,90,200,0.5)';
+  ctx.strokeStyle = 'rgba(90,130,190,0.5)';
   ctx.lineWidth = 1.6;
   for (const [dx, dy, a0, a1] of [[-0.3, 0.2, 3.6, 5.6], [0.3, 0.35, 3.4, 5.4]]) {
     ctx.beginPath();
@@ -202,9 +202,9 @@ function paintWraith(ctx, r, t, st, flash) {
   ctx.beginPath();
   ctx.ellipse(0, -0.4 * r, 0.4 * r, 0.48 * r, 0, 0, TAU);
   ctx.fill();
-  eye(ctx, -0.17 * r, -0.45 * r, 0.1 * r, 0.14 * r, '#f4ecff', 0.15);
-  eye(ctx, 0.17 * r, -0.45 * r, 0.1 * r, 0.14 * r, '#f4ecff', -0.15);
-  glowDot(ctx, 0, -0.45 * r, r * 0.8, '#b48cff', 0.5);
+  eye(ctx, -0.17 * r, -0.45 * r, 0.1 * r, 0.14 * r, '#e8f8ff', 0.15);
+  eye(ctx, 0.17 * r, -0.45 * r, 0.1 * r, 0.14 * r, '#e8f8ff', -0.15);
+  glowDot(ctx, 0, -0.45 * r, r * 0.8, '#9fd8ff', 0.5);
 }
 
 /** Spark Beetle: a brass-shelled beetle crackling with violet arcs (and a charge aura). */
@@ -365,7 +365,7 @@ export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
     painters[kindId](ctx, r, t, st, flashing);
   }
   if ((st.frozen ?? 0) > 0) {
-    ctx.globalAlpha = 0.65;
+    ctx.globalAlpha = 0.42;
     ctx.fillStyle = '#bfeaff';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
