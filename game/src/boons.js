@@ -19,7 +19,7 @@ export const BOONS = [
 export const REROLL_COST = 40;
 
 export const RARITY = {
-  common: { label: 'COMMON', color: '#9fb3d9' },
+  common: { label: 'COMMON', color: '#9aa3b2' },
   rare: { label: 'RARE', color: '#4aa8ff' },
   epic: { label: 'EPIC', color: '#c25cff' },
 };

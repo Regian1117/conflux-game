@@ -205,11 +205,22 @@ function drawTip(ctx, game) {
   ctx.globalAlpha = 1;
 }
 
+/** The goal banner beside the rift counter: how to win and how to lose, large on a dark plate. */
+function drawGoalBanner(ctx) {
+  const x = 236;
+  const w = 336;
+  drawPanel(ctx, x, 8, w, 68, { fill: '#050608', edge: '#d4aa55', lineWidth: 3 });
+  const lines = [['WIN: seal 7 rifts + slay the Colossus', P.good], ['LOSE: the Core shatters', '#ff5a6a']];
+  lines.forEach(([text, color], i) => {
+    ctx.font = `900 100px ${'sans-serif'}`;
+    const fit = Math.min(i === 0 ? 19 : 22, ((w - 28) / ctx.measureText(text).width) * 100);
+    drawText(ctx, text, x + w / 2, 36 + i * 28, { size: fit, color, align: 'center', outline: 3 });
+  });
+}
+
 /** Gold filigree corners over every HUD panel. */
 function drawFrames(ctx, game) {
-  const midW = game.boss ? 720 - MID_X - 0 : MID_W;
-  const frames = [[12, 8, 214, 68], [MID_X, 8, game.boss ? 480 : midW, 68], [PANEL_X, 8, PANEL_W, 68], ...BRUSH_CARDS.map((c) => [c.x, c.y, c.w, c.h]), [PANEL_X, 394, PANEL_W, 112], [PANEL_X, 512, PANEL_W, 64], [PANEL_X, 582, PANEL_W, H - 56 - 582]];
-  if (game.boss) frames.push([726, 8, MID_X + MID_W - 726, 68]);
+  const frames = [[12, 8, 214, 68], [236, 8, 336, 68], [582, 8, MID_X + MID_W - 582, 68], [PANEL_X, 8, PANEL_W, 68], ...BRUSH_CARDS.map((c) => [c.x, c.y, c.w, c.h]), [PANEL_X, 394, PANEL_W, 112], [PANEL_X, 512, PANEL_W, 64], [PANEL_X, 582, PANEL_W, H - 56 - 582]];
   for (const [x, y, w, h] of frames) drawFiligree(ctx, x + 1, y + 1, w - 2, h - 2);
 }
 
@@ -251,17 +262,14 @@ export function drawKeyBar(ctx) {
   group(['P'], 'pause');
   group(['M'], isMuted() ? 'unmute' : 'mute');
   group(['R'], 'restart');
-  drawText(ctx, 'WIN: clear 7 rifts and the Colossus', W - 14, y + 13, { size: 14, color: P.good, align: 'right', outline: 2 });
-  drawText(ctx, 'LOSE: the Core shatters', W - 14, y + 33, { size: 14, color: P.danger, align: 'right', outline: 2 });
 }
 
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
   drawRiftBlock(ctx, game);
-  if (game.boss) {
-    drawBossPanel(ctx, game.boss, time, MID_X, 480);
-    drawQueue(ctx, game, time, 726, MID_X + MID_W - 726);
-  } else drawQueue(ctx, game, time, MID_X, MID_W);
+  drawGoalBanner(ctx);
+  if (game.boss) drawBossPanel(ctx, game.boss, time, 582, MID_X + MID_W - 582);
+  else drawQueue(ctx, game, time, 582, MID_X + MID_W - 582);
   drawCoreBlock(ctx, game);
   drawBrushCards(ctx, game, time);
   drawScoreBlock(ctx, game, bests);

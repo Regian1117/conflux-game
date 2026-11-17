@@ -395,8 +395,9 @@ function drawSteam(ctx, cells, t) {
 function drawBolts(ctx, cloud, charged, t) {
   ctx.globalCompositeOperation = 'lighter';
   for (const i of cloud) {
+    if (hash(i, 9) < 0.88) continue;
     const phase = (t * 1.4 + hash(i, 9) * 9) % 3;
-    if (phase > 0.28) continue;
+    if (phase > 0.2) continue;
     const x = FIELD.x + (i % COLS) * CELL + 10;
     const y = FIELD.y + Math.floor(i / COLS) * CELL + 14;
     const seed = i * 7 + Math.floor(t * 18);

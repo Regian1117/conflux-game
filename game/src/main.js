@@ -2,7 +2,7 @@
 // moves between title (with attract mode), how-to-play, the Rift Path (map and boon pick), play,
 // pause, win and lose.
 //
-// ?seed=N fixes the random seed. ?shot=cover|title|path|results (with &seed=N) stages that scene
+// ?seed=N fixes the random seed. ?shot=cover|title|pick|results (with &seed=N) stages that scene
 // instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
 import { BEST_KEY, DIFFICULTIES, DIFFICULTY_KEY, H, RECORD_KEY, SEED_KEY, STEP, W } from './config.js';
 import { createInput } from './input.js';
@@ -65,6 +65,14 @@ function paint(game, screen, bests, time, ui = {}) {
     return;
   }
   if (screen === 'path') {
+    // The pick screen: the battlefield, blurred and dimmed, behind the cards and the map.
+    ctx.fillStyle = '#05060a';
+    ctx.fillRect(0, 0, W, H);
+    drawBattlefield(ctx, game, time);
+    ctx.save();
+    ctx.filter = 'blur(6px) brightness(0.55)';
+    ctx.drawImage(canvas, 12, 84, 1020, 660, 0, 0, W, H);
+    ctx.restore();
     drawPath(ctx, game, time, ui);
     if (game.phase === 'shrine') drawShrine(ctx, game, time);
     return;
