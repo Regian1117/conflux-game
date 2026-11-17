@@ -1,14 +1,17 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between four screens: title, play, paused and game over.
+// Boot and the one loop. The simulation advances in fixed 1/60 s steps; the screen state machine
+// moves between title (with attract mode), how-to-play, play, pause, boon pick, win and lose.
 //
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
+// ?seed=N fixes the random seed. ?shot=cover|early|boon|win (with &seed=N) stages that scene
 // instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, LIVES, STEP } from './config.js';
-import { createRandom } from './random.js';
-import { createWorld, EVENT_HIT, EVENT_OVER } from './world.js';
-import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
-import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+import { BEST_KEY, H, RECORD_KEY, STEP, W } from './config.js';
+import { createInput } from './input.js';
+import { beginNextPrep, callRift, createGame, selectBrush, setCursor, updateGame } from './game.js';
+import { drawBattlefield } from './render.js';
+import { brushCardAt, drawHud } from './hud.js';
+import { boonCardAt, drawBoonPick, drawEnd, drawHelp, drawPause, drawTitle } from './screens.js';
+import { takeBoon } from './boons.js';
+import { createBot, botStep } from './autopilot.js';
+import { isMuted, sfx, toggleMute, unlockAudio, updateMusic } from './audio.js';
 import { stageShot } from './shots.js';
 
 /** The longest frame the loop catches up on; a longer stall (a hidden tab) is dropped, not replayed. */
@@ -17,118 +20,193 @@ const MAX_FRAME = 0.25;
 const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
 const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-const seed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
+const baseSeed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
 
 const canvas = document.getElementById('game');
 const status = document.getElementById('status');
-const world = createWorld(createRandom(seed));
-const renderer = createRenderer(canvas);
+canvas.width = W;
+canvas.height = H;
+const ctx = canvas.getContext('2d');
 
-function readBest() {
+function readNumber(key) {
   try {
-    return Number.parseInt(window.localStorage.getItem(BEST_KEY) ?? '0', 10) || 0;
+    return Number.parseInt(window.localStorage.getItem(key) ?? '0', 10) || 0;
   } catch {
     return 0;
   }
 }
 
-function saveBest(value) {
+function writeNumber(key, value) {
   try {
-    window.localStorage.setItem(BEST_KEY, String(value));
+    window.localStorage.setItem(key, String(value));
   } catch {
-    // Storage can be off (private windows): the best score then lasts this visit only.
+    // Storage can be off (private windows): records then last this visit only.
   }
 }
 
+/** Scale the fixed 1280x720 canvas to the window, keeping its shape. */
+function fitCanvas() {
+  const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width = `${Math.floor(W * scale)}px`;
+  canvas.style.height = `${Math.floor(H * scale)}px`;
+}
+
+/** Paint one complete frame: battlefield, HUD, then the overlay for the current screen. */
+function paint(game, screen, bests, time, hover) {
+  ctx.fillStyle = '#05060a';
+  ctx.fillRect(0, 0, W, H);
+  drawBattlefield(ctx, game, time);
+  drawHud(ctx, game, bests, time);
+  if (screen === 'title') drawTitle(ctx, time);
+  else if (screen === 'help') drawHelp(ctx, time);
+  else if (screen === 'boon') drawBoonPick(ctx, game, hover, time);
+  else if (screen === 'pause') drawPause(ctx);
+  else if (screen === 'win') drawEnd(ctx, game, bests, true, time);
+  else if (screen === 'lose') drawEnd(ctx, game, bests, false, time);
+}
+
 function runShot(name) {
-  const scene = stageShot(name, world);
+  const scene = stageShot(name, baseSeed);
   let painted = 0;
-  function paint() {
-    renderer.draw(world.state, scene.screen, scene.best);
+  function frame() {
+    paint(scene.game, scene.screen, scene.bests, scene.time, scene.hover ?? -1);
     painted += 1;
-    if (painted < 2) requestAnimationFrame(paint);
+    if (painted < 2) requestAnimationFrame(frame);
     else window.__shotReady = true;
   }
-  requestAnimationFrame(paint);
+  requestAnimationFrame(frame);
 }
 
 function runGame() {
   const input = createInput(canvas);
-  let screen = SCREEN_TITLE;
-  let best = readBest();
+  const bests = { score: readNumber(BEST_KEY), chain: readNumber(RECORD_KEY) };
+  let screen = 'title';
+  let game = createGame(baseSeed);
+  let attract = createGame(baseSeed + 1);
+  const bot = createBot();
   let accumulator = 0;
   let last = performance.now();
+  let endedAt = 0;
 
-  // Screen readers (and anyone watching the page's text) hear the screen changes and each hit.
   function announce(message) {
     status.textContent = message;
   }
 
-  function startGame() {
-    world.reset();
+  function newRun() {
+    game = createGame(Number.isInteger(seedParam) ? baseSeed : Math.floor(Math.random() * 4294967296));
+    screen = 'play';
     accumulator = 0;
-    screen = SCREEN_PLAY;
-    announce(`Playing. ${LIVES} lives.`);
+    announce('Playing. Rift 1 opens soon. Paint with the mouse, keys 1 to 4 pick the brush.');
   }
 
-  function endGame() {
-    screen = SCREEN_OVER;
-    if (world.state.score > best) {
-      best = world.state.score;
-      saveBest(best);
+  function recordRun() {
+    if (game.score > bests.score) {
+      bests.score = game.score;
+      writeNumber(BEST_KEY, bests.score);
     }
-    announce(`Game over. Score ${world.state.score}. Best ${best}.`);
+    if (game.stats.bestChain > bests.chain) {
+      bests.chain = game.stats.bestChain;
+      writeNumber(RECORD_KEY, bests.chain);
+    }
   }
 
-  function handleActions() {
-    const actions = input.takeActions();
-    if (actions & ACTION_CONFIRM && (screen === SCREEN_TITLE || screen === SCREEN_OVER)) startGame();
-    else if (actions & ACTION_PAUSE && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    } else if (actions & (ACTION_PAUSE | ACTION_CONFIRM) && screen === SCREEN_PAUSED) {
-      screen = SCREEN_PLAY;
-      announce('Playing.');
+  function chooseBoon(index) {
+    const boon = game.offer[index];
+    if (!boon) return;
+    takeBoon(game, boon.id);
+    sfx.boon();
+    beginNextPrep(game);
+    screen = 'play';
+    announce(`Boon taken: ${boon.name}. Rift ${game.riftNum + 1} opens soon.`);
+  }
+
+  function handleKeys() {
+    for (const code of input.takeKeys()) {
+      unlockAudio();
+      if (code === 'KeyM') {
+        toggleMute();
+        announce(isMuted() ? 'Sound off.' : 'Sound on.');
+        continue;
+      }
+      if (screen === 'title' && (code === 'Space' || code === 'Enter')) screen = 'help';
+      else if (screen === 'help' && (code === 'Space' || code === 'Enter')) newRun();
+      else if (screen === 'play') {
+        if (code.startsWith('Digit')) selectBrush(game, Number(code.slice(5)) - 1);
+        else if (code === 'Space' || code === 'Enter') callRift(game);
+        else if (code === 'KeyP' || code === 'Escape') screen = 'pause';
+      } else if (screen === 'pause') {
+        if (code === 'KeyP' || code === 'Escape' || code === 'Space') screen = 'play';
+        else if (code === 'KeyR') newRun();
+      } else if (screen === 'boon') {
+        if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') chooseBoon(Number(code.slice(5)) - 1);
+      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900 && (code === 'KeyR' || code === 'Space' || code === 'Enter')) newRun();
+    }
+  }
+
+  function handleClicks() {
+    for (const click of input.takeClicks()) {
+      unlockAudio();
+      if (screen === 'title') screen = 'help';
+      else if (screen === 'help') newRun();
+      else if (screen === 'boon') chooseBoon(boonCardAt(click.x, click.y));
+      else if (screen === 'play') {
+        const card = brushCardAt(click.x, click.y);
+        if (card >= 0) selectBrush(game, card);
+      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) newRun();
     }
   }
 
   function step() {
-    if (screen === SCREEN_TITLE) {
-      world.step(STEP, 0, true);
+    if (screen === 'title' || screen === 'help') {
+      botStep(bot, attract, STEP);
+      updateGame(attract, STEP);
+      if (attract.phase === 'won' || attract.phase === 'lost') attract = createGame(baseSeed + attract.riftNum + 7);
       return;
     }
-    const events = world.step(STEP, input.direction(), false);
-    if (events & EVENT_OVER) endGame();
-    else if (events & EVENT_HIT) announce(world.state.lives === 1 ? 'Hit. 1 life left.' : `Hit. ${world.state.lives} lives left.`);
+    if (screen !== 'play') return;
+    setCursor(game, input.pointer.x, input.pointer.y, input.pointer.down);
+    updateGame(game, STEP);
+    if (game.phase === 'boon') {
+      screen = 'boon';
+      announce(`Rift ${game.riftNum} cleared. Choose a boon with 1, 2 or 3.`);
+    } else if (game.phase === 'won' || game.phase === 'lost') {
+      screen = game.phase === 'won' ? 'win' : 'lose';
+      endedAt = performance.now();
+      recordRun();
+      announce(game.phase === 'won' ? `Conflux mastered. Score ${game.score}.` : `The Core shatters. Score ${game.score}.`);
+    }
   }
 
   function frame(now) {
     requestAnimationFrame(frame);
     accumulator += Math.min((now - last) / 1000, MAX_FRAME);
     last = now;
-    handleActions();
-    if (screen === SCREEN_TITLE || screen === SCREEN_PLAY) {
-      while (accumulator >= STEP && (screen === SCREEN_TITLE || screen === SCREEN_PLAY)) {
-        step();
-        accumulator -= STEP;
-      }
-    } else {
-      accumulator = 0;
+    handleKeys();
+    handleClicks();
+    let guard = 0;
+    while (accumulator >= STEP && guard < 6) {
+      step();
+      accumulator -= STEP;
+      guard += 1;
     }
-    renderer.draw(world.state, screen, best);
+    if (guard === 6) accumulator = 0;
+    // Overlay screens still animate the board behind them (particles settle) at a gentle pace.
+    if (screen === 'boon' || screen === 'win' || screen === 'lose') updateGame(game, STEP);
+    const showing = screen === 'title' || screen === 'help' ? attract : game;
+    const hover = screen === 'boon' ? boonCardAt(input.pointer.x, input.pointer.y) : -1;
+    const intensity = screen === 'title' || screen === 'help' ? 0.25 : game.boss ? 1 : 0.2 + (game.riftNum / 7) * 0.65;
+    updateMusic(screen === 'pause' ? 0 : intensity);
+    paint(showing, screen, bests, now / 1000, hover);
   }
 
-  // Leaving the tab pauses a running game rather than letting blocks fall unseen.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    }
+    if (document.hidden && screen === 'play') screen = 'pause';
   });
-
-  announce('Block Dodger. Press Space or click to start.');
+  announce('CONFLUX. Press Space or click to begin.');
   requestAnimationFrame(frame);
 }
 
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
 if (shot) runShot(shot);
 else runGame();

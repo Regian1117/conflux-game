@@ -1,61 +1,68 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Every tuning number and colour for CONFLUX in one place. The canvas is a fixed 1280x720 logical
+// area (scaled to the window by main.js); the battlefield is a 48x30 grid of 20px cells.
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
-
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
+export const W = 1280;
+export const H = 720;
+/** The simulation's fixed step in seconds: 60 updates a second whatever the display rate. */
 export const STEP = 1 / 60;
 
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+export const COLS = 48;
+export const ROWS = 30;
+export const CELL = 20;
+/** Where the battlefield sits on the canvas. */
+export const FIELD = { x: 12, y: 84, w: COLS * CELL, h: ROWS * CELL };
+
+export const RIFT_COUNT = 7;
+/** The Core Crystal fills the 3x3 cells around (col, row). */
+export const CORE = { col: 24, row: 15, maxHp: 100, hitRadius: 1.8 };
+/** Rift gates on the four edges: where creatures step out. */
+export const GATES = {
+  W: { col: 0, row: 15, name: 'WEST' },
+  E: { col: 47, row: 15, name: 'EAST' },
+  N: { col: 24, row: 0, name: 'NORTH' },
+  S: { col: 24, row: 29, name: 'SOUTH' },
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
-};
-
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
-};
-
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
+export const ESSENCE = { max: 100, regen: 5.5, perCell: 1.0, refreshCost: 0.4 };
+export const BRUSH = { radius: 1.15, spacing: 0.7 };
+/** Reactions run on a fixed tick; a chain survives this long without a new reaction. */
+export const REACT = { interval: 0.25, chainWindow: 2.6 };
+export const PREP_SECONDS = 9;
+export const FIRST_PREP_SECONDS = 12;
+export const MAX_CREATURES = 140;
 
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  ground: '#07080d',
+  groundLine: '#0e1119',
+  panel: '#0d1018',
+  panelEdge: '#2a3042',
+  text: '#f2f5fb',
+  muted: '#8f98ad',
+  fire: '#ff5a1f',
+  fireGlow: '#ffb347',
+  water: '#22c3ff',
+  earth: '#8a6a3a',
+  moss: '#5f8f3a',
+  storm: '#ffe23a',
+  stormViolet: '#a65cff',
+  lava: '#ff3d00',
+  ice: '#dff6ff',
+  steam: '#cfe9f2',
+  magnet: '#b86a86',
+  core: '#6ff0ff',
+  danger: '#ff3b4e',
+  good: '#6dffb0',
+  gold: '#ffd24a',
 };
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+export const FONT = '"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif';
+export const BEST_KEY = 'conflux.best';
+export const RECORD_KEY = 'conflux.chain';
 
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
+/** The Hollow Colossus's armour: plates break only to these reactions, in this order. */
+export const PLATES = [
+  { need: 'STEAM', color: '#cfe9f2', hint: 'FIRE + WATER' },
+  { need: 'STORMSTEAM', color: '#a65cff', hint: 'STEAM + STORM' },
+  { need: 'LAVA', color: '#ff6a1f', hint: 'FIRE + EARTH' },
+  { need: 'SHOCK', color: '#ffe23a', hint: 'WATER + STORM' },
+];
