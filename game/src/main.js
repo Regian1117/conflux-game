@@ -10,7 +10,7 @@ import { drawBattlefield } from './render.js';
 import { brushCardAt, drawHud } from './hud.js';
 import { OVERLAY_OFFSET, boonCardAt, drawBoonPick, drawHelp, drawPause } from './screens.js';
 import { drawTitle, titleHit } from './menus.js';
-import { drawResults } from './results.js';
+import { TITLE_BUTTON, drawResults } from './results.js';
 import { takeBoon } from './boons.js';
 import { createBot, botStep } from './autopilot.js';
 import { isMuted, sfx, toggleMute, unlockAudio, updateMusic } from './audio.js';
@@ -159,7 +159,10 @@ function runGame() {
         else if (code === 'KeyR') newRun();
       } else if (screen === 'boon') {
         if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') chooseBoon(Number(code.slice(5)) - 1);
-      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900 && (code === 'KeyR' || code === 'Space' || code === 'Enter')) newRun();
+      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) {
+        if (code === 'KeyR' || code === 'Space' || code === 'Enter') newRun();
+        else if (code === 'KeyT') screen = 'title';
+      }
     }
   }
 
@@ -175,7 +178,11 @@ function runGame() {
       else if (screen === 'play') {
         const card = brushCardAt(click.x, click.y);
         if (card >= 0) selectBrush(game, card);
-      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) newRun();
+      } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) {
+        const b = TITLE_BUTTON;
+        if (click.x >= b.x && click.x < b.x + b.w && click.y >= b.y && click.y < b.y + b.h) screen = 'title';
+        else newRun();
+      }
     }
   }
 

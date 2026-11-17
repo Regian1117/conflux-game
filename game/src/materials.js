@@ -5,6 +5,7 @@
 // Each element is built on its own offscreen layer so the details stay inside the blob.
 import { CELL, COLS, FIELD, ROWS } from './config.js';
 import { CHARGED, CLOUD, EARTH, ELEMENTS, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
+import { drawGlyph } from './glyphs.js';
 
 const layers = new Map();
 const glows = new Map();
@@ -296,6 +297,21 @@ function ripples(g, cells, t, color) {
   g.stroke();
 }
 
+const ETCH = { [FIRE]: 'fire', [LAVA]: 'fire', [WATER]: 'water', [CHARGED]: 'water', [EARTH]: 'earth', [MAGNET]: 'earth', [STORM]: 'storm', [CLOUD]: 'storm', [ICE]: 'frost' };
+
+/** Faint alchemical glyphs etched into the interior of a blob, one every few cells. */
+function etchGlyphs(g, grid, type, cells) {
+  const kind = ETCH[type];
+  if (!kind) return;
+  for (const i of cells) {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    if ((col + row * 2) % 4 !== 0 || col < 1 || col > COLS - 2 || row < 1 || row > ROWS - 2) continue;
+    if (grid.type[i - 1] !== type || grid.type[i + 1] !== type || grid.type[i - COLS] !== type || grid.type[i + COLS] !== type) continue;
+    drawGlyph(g, kind, col * CELL + 10, row * CELL + 10, 6.5, 'rgba(255,255,255,0.3)', 1.6);
+  }
+}
+
 const GLOW = {
   [FIRE]: ['#ff8a2a', 0.55, 78],
   [LAVA]: ['#ff6a14', 0.6, 84],
@@ -453,6 +469,7 @@ export function drawMaterials(ctx, game, time) {
     g.fillRect(0, 0, FIELD.w, FIELD.h);
     g.globalCompositeOperation = 'source-atop';
     DETAILS[type](g, cells, time);
+    etchGlyphs(g, grid, type, cells);
     rim(g, grid, type, cells, RIMS[type], 3.2);
     g.globalCompositeOperation = 'source-over';
     // Fade cells that are about to expire: blink handled by the per-cell life below.

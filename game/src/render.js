@@ -9,6 +9,7 @@ import { drawBossWarning } from './boss.js';
 import { drawParticles, drawTexts } from './particles.js';
 import { upcoming } from './rifts.js';
 import { getGridLines, getGround } from './ground.js';
+import { drawGlyph } from './glyphs.js';
 import { drawMaterials } from './materials.js';
 
 const glowCache = new Map();
@@ -36,52 +37,96 @@ const hash = (i, k) => {
   return s - Math.floor(s);
 };
 
-/** A torn, glowing rift portal with swirling particles; brighter when creatures are about to come. */
+/**
+ * A rift: a slowly rotating gold rune circle with a ring of elemental glyphs, and a torn, dark
+ * opening at its heart with swirling particles. Hotter (more cracks, brighter) when creatures are
+ * about to come through it.
+ */
 function drawPortal(ctx, key, hot, time) {
   const gate = GATES[key];
+  const inward = { W: 38, E: -38, N: 38, S: -38 }[key];
   const vertical = key === 'W' || key === 'E';
-  const inward = { W: 16, E: -16, N: 16, S: -16 }[key];
   const x = toScreenX(gate.col + 0.5) + (vertical ? inward : 0);
   const y = toScreenY(gate.row + 0.5) + (vertical ? 0 : inward);
-  const rx = vertical ? 15 : 50;
-  const ry = vertical ? 50 : 15;
+  const R = 42;
   ctx.save();
   ctx.translate(x, y);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = hot ? 0.85 : 0.45;
-  ctx.drawImage(glowSprite('#b04cff'), -rx * 3, -ry * 3, rx * 6, ry * 6);
+  ctx.globalAlpha = hot ? 0.75 : 0.4;
+  ctx.drawImage(glowSprite('#c58aff'), -R * 2.2, -R * 2.2, R * 4.4, R * 4.4);
+  ctx.globalAlpha = hot ? 0.45 : 0.22;
+  ctx.drawImage(glowSprite('#ffb347'), -R * 1.5, -R * 1.5, R * 3, R * 3);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
-  // The torn rim: a ring whose radius jitters, so it reads as ripped open rather than drawn.
+  // The torn opening.
   ctx.beginPath();
-  for (let k = 0; k <= 28; k += 1) {
-    const a = (k / 28) * 6.283;
-    const j = 1 + (hash(k + (key.charCodeAt(0) % 7), 2) - 0.5) * 0.28 + Math.sin(time * 3 + k) * 0.03;
-    ctx[k === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * rx * j, Math.sin(a) * ry * j);
+  for (let k = 0; k <= 22; k += 1) {
+    const a = (k / 22) * 6.283;
+    const j = 0.78 + hash(k + (key.charCodeAt(0) % 9), 2) * 0.5 + Math.sin(time * 3 + k) * 0.04;
+    ctx[k === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * R * 0.46 * j, Math.sin(a) * R * 0.46 * j);
   }
   ctx.closePath();
-  const hole = ctx.createRadialGradient(0, 0, 2, 0, 0, Math.max(rx, ry));
+  const hole = ctx.createRadialGradient(0, 0, 1, 0, 0, R * 0.5);
   hole.addColorStop(0, '#000000');
   hole.addColorStop(0.7, '#1a0630');
-  hole.addColorStop(1, '#5a1d9a');
+  hole.addColorStop(1, '#6a2dba');
   ctx.fillStyle = hole;
   ctx.fill();
   ctx.strokeStyle = hot ? '#ff8af5' : '#a65cff';
-  ctx.lineWidth = hot ? 4 : 3;
+  ctx.lineWidth = 3;
   ctx.stroke();
+  // Gold rune circle: rings, rotating dashes, tick marks and four glyphs.
+  ctx.strokeStyle = '#d4aa55';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, 6.283);
+  ctx.stroke();
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, R - 7, 0, 6.283);
+  ctx.stroke();
+  ctx.setLineDash([9, 7]);
+  ctx.lineDashOffset = time * 14;
+  ctx.beginPath();
+  ctx.arc(0, 0, R * 0.62, 0, 6.283);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.save();
+  ctx.rotate(time * 0.35);
+  for (let k = 0; k < 24; k += 1) {
+    const a = (k / 24) * 6.283;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R);
+    ctx.lineTo(Math.cos(a) * (R + (k % 3 === 0 ? 7 : 4)), Math.sin(a) * (R + (k % 3 === 0 ? 7 : 4)));
+    ctx.stroke();
+  }
+  ['fire', 'water', 'earth', 'storm'].forEach((kind, k) => {
+    const a = (k / 4) * 6.283;
+    ctx.save();
+    ctx.translate(Math.cos(a) * (R - 15), Math.sin(a) * (R - 15));
+    ctx.rotate(-time * 0.35);
+    drawGlyph(ctx, kind, 0, 0, 6, hot ? '#ffe9a0' : '#d4aa55', 1.8);
+    ctx.restore();
+  });
+  ctx.restore();
+  // Glyph rings tearing open: violet cracks leaking out of the heart.
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineWidth = 2;
-  for (let s = 0; s < 3; s += 1) {
-    ctx.strokeStyle = s === 1 ? 'rgba(255,140,245,0.6)' : 'rgba(150,100,255,0.55)';
+  ctx.strokeStyle = hot ? 'rgba(255,140,245,0.85)' : 'rgba(170,110,255,0.55)';
+  for (let k = 0; k < (hot ? 9 : 5); k += 1) {
+    const a = (k / 9) * 6.283 + time * 0.2;
+    const len = R * (0.55 + hash(k, 6) * 0.5);
     ctx.beginPath();
-    ctx.ellipse(0, 0, rx * (0.35 + s * 0.2), ry * (0.35 + s * 0.2), 0, time * (1.5 + s) + s, time * (1.5 + s) + s + 3);
+    ctx.moveTo(Math.cos(a) * R * 0.3, Math.sin(a) * R * 0.3);
+    ctx.lineTo(Math.cos(a + 0.12) * len * 0.7, Math.sin(a + 0.12) * len * 0.7);
+    ctx.lineTo(Math.cos(a - 0.05) * len, Math.sin(a - 0.05) * len);
     ctx.stroke();
   }
   for (let p = 0; p < 12; p += 1) {
     const a = time * (1.2 + (p % 3) * 0.5) + p * 0.52;
-    const r = 0.6 + 0.5 * ((p * 0.37 + time * 0.4) % 1);
+    const r = 0.25 + 0.5 * ((p * 0.37 + time * 0.4) % 1);
     ctx.fillStyle = p % 2 ? '#ff9af5' : '#c58aff';
-    ctx.fillRect(Math.cos(a) * rx * r * 1.1 - 1.5, Math.sin(a) * ry * r * 1.1 - 1.5, 3, 3);
+    ctx.fillRect(Math.cos(a) * R * r - 1.5, Math.sin(a) * R * r - 1.5, 3, 3);
   }
   ctx.restore();
 }
@@ -219,6 +264,43 @@ function drawCursor(ctx, game, time) {
   ctx.globalAlpha = 1;
 }
 
+let bloomCanvas = null;
+let grain = null;
+
+/**
+ * Soft bloom (the bright parts of the field, blurred by downscaling and added back) and a faint
+ * paper grain, so the scene reads as a painted arcane world rather than flat shapes.
+ */
+function drawBloomAndGrain(ctx) {
+  if (!bloomCanvas) {
+    bloomCanvas = document.createElement('canvas');
+    bloomCanvas.width = 192;
+    bloomCanvas.height = 136;
+    const n = document.createElement('canvas');
+    n.width = 96;
+    n.height = 96;
+    const g = n.getContext('2d');
+    for (let i = 0; i < 2600; i += 1) {
+      g.fillStyle = hash(i, 1) > 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)';
+      g.fillRect(hash(i, 2) * 96, hash(i, 3) * 96, 1 + hash(i, 4) * 2, 1 + hash(i, 5) * 2);
+    }
+    grain = ctx.createPattern(n, 'repeat');
+  }
+  const b = bloomCanvas.getContext('2d');
+  b.globalCompositeOperation = 'source-over';
+  b.filter = 'blur(2px) brightness(1.15) contrast(1.25)';
+  b.drawImage(ctx.canvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h, 0, 0, 192, 136);
+  b.filter = 'none';
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.3;
+  ctx.drawImage(bloomCanvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.globalAlpha = 0.05;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = grain;
+  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.globalAlpha = 1;
+}
+
 /** Paint the whole battlefield for this frame (inside the FIELD rectangle, with screen shake). */
 export function drawBattlefield(ctx, game, time) {
   const shake = game.fx.shake;
@@ -239,6 +321,7 @@ export function drawBattlefield(ctx, game, time) {
   drawParticles(ctx, game.fx);
   drawCursor(ctx, game, time);
   drawTexts(ctx, game.fx);
+  drawBloomAndGrain(ctx);
   ctx.restore();
   if (game.fx.flash > 0) {
     ctx.globalAlpha = Math.min(0.45, game.fx.flash * 0.5);

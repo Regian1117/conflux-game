@@ -10,6 +10,11 @@ import { chainMult } from './score.js';
 import { RIFT_PLANS, upcoming } from './rifts.js';
 import { drawBar, drawPanel, drawText, formatNumber } from './draw.js';
 import { isMuted } from './audio.js';
+import { drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
+import { reactionGrade } from './score.js';
+
+const BRUSH_GLYPHS = ['fire', 'water', 'earth', 'storm'];
+const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
 
 const PANEL_X = 988;
 const PANEL_W = 280;
@@ -99,6 +104,7 @@ function drawBrushCards(ctx, game, time) {
     ctx.fill();
     drawText(ctx, String(i + 1), card.x + 29, card.y + 39, { size: 28, color: '#05060a', align: 'center', outline: 0 });
     drawText(ctx, el.name, card.x + 58, card.y + 32, { size: 24, color: el.color });
+    drawGlyph(ctx, BRUSH_GLYPHS[i], card.x + card.w - 36, card.y + 28, 15, el.color, 3.2);
     const essence = game.essence[i];
     const ratio = essence / game.mods.essenceMax;
     drawBar(ctx, card.x + 58, card.y + 40, 170, 12, ratio, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
@@ -134,11 +140,7 @@ function drawBoonList(ctx, game) {
   }
   held.slice(0, 6).forEach((b, i) => {
     const row = y + 30 + i * 22;
-    ctx.fillStyle = b.color;
-    ctx.beginPath();
-    ctx.roundRect(PANEL_X + 12, row, 18, 18, 4);
-    ctx.fill();
-    drawText(ctx, b.icon, PANEL_X + 21, row + 14, { size: 13, color: '#05060a', align: 'center', outline: 0 });
+    drawGlyphTile(ctx, b.glyph, PANEL_X + 22, row + 9, 22, b.color);
     drawText(ctx, `${b.name}${game.boons[b.id] > 1 ? ` x${game.boons[b.id]}` : ''}`, PANEL_X + 38, row + 15, { size: 15, color: '#ffffff', outline: 2 });
   });
 }
@@ -182,6 +184,28 @@ function drawTip(ctx, game) {
   ctx.globalAlpha = 1;
 }
 
+/** The live reaction grade, beside the chain callout: a letter, with the chain's time bar under it. */
+function drawGradeMeter(ctx, game, time) {
+  const count = game.chain.count;
+  if (count < 2) return;
+  const grade = reactionGrade(count);
+  const x = FIELD.x + 8;
+  const y = FIELD.y + FIELD.h - 142;
+  drawPanel(ctx, x, y, 270, 58, { fill: 'rgba(8,10,16,0.88)', edge: GRADE_COLORS[grade], lineWidth: 3 });
+  drawText(ctx, 'REACTION GRADE', x + 12, y + 22, { size: 14, color: P.muted, outline: 0 });
+  drawText(ctx, `x${count} combo`, x + 12, y + 46, { size: 20, color: '#ffffff' });
+  drawText(ctx, grade, x + 232, y + 46, { size: 50, color: GRADE_COLORS[grade], align: 'center' });
+  drawBar(ctx, x + 12, y + 51, 190, 4, game.chain.timer / REACT.chainWindow, GRADE_COLORS[grade]);
+  void time;
+}
+
+/** Gold filigree corners over every HUD panel. */
+function drawFrames(ctx, game) {
+  const frames = [[12, 8, 214, 68], [236, 8, 584, 68], [832, 8, 436, 68], ...BRUSH_CARDS.map((c) => [c.x, c.y, c.w, c.h]), [PANEL_X, 394, PANEL_W, 112], [PANEL_X, 514, PANEL_W, H - 34 - 514]];
+  for (const [x, y, w, h] of frames) drawFiligree(ctx, x + 1, y + 1, w - 2, h - 2);
+  void game;
+}
+
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
   drawRiftBlock(ctx, game);
@@ -190,8 +214,10 @@ export function drawHud(ctx, game, bests, time) {
   drawBrushCards(ctx, game, time);
   drawScoreBlock(ctx, game, bests);
   drawBoonList(ctx, game);
+  drawGradeMeter(ctx, game, time);
   drawBossStrip(ctx, game, time);
   drawTip(ctx, game);
+  drawFrames(ctx, game);
   drawText(ctx, 'WIN: clear 7 rifts and the Colossus', 16, H - 12, { size: 17, color: P.good });
   drawText(ctx, '·', 322, H - 12, { size: 17, color: P.muted });
   drawText(ctx, 'LOSE: the Core shatters', 336, H - 12, { size: 17, color: P.danger });

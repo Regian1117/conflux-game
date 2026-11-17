@@ -37,7 +37,7 @@ export function createGame(seed, difficulty = 1) {
     core: { hp: CORE.maxHp, shield: 0, hitFlash: 0 },
     score: 0,
     chain: { count: 0, timer: 0, best: 0, lastText: -9, lastGain: -9, kinds: new Set() },
-    stats: { kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {} },
+    stats: { byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {} },
     boons: {},
     mods: {},
     rift: null,

@@ -7,10 +7,17 @@ import { toScreenX, toScreenY } from './grid.js';
 
 /** The run's grade (S, A, B or C) from the Core's health, the hits it took and the difficulty. */
 export function gradeFor(game) {
-  const health = (game.core.hp / CORE.maxHp) * 100 + game.difficulty * 8 - game.stats.coreHits * 1.2;
+  const health = (game.core.hp / CORE.maxHp) * 100 + game.difficulty * 8 - game.stats.coreHits * 0.4;
   if (health >= 88) return 'S';
   if (health >= 60) return 'A';
   return health >= 35 ? 'B' : 'C';
+}
+
+/** The live reaction grade shown beside the chain: S from x12, A from x6, B from x3, else C. */
+export function reactionGrade(count) {
+  if (count >= 12) return 'S';
+  if (count >= 6) return 'A';
+  return count >= 3 ? 'B' : 'C';
 }
 
 export const chainMult = (count) => 1 + Math.min(count, 30) * 0.1;

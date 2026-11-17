@@ -3,6 +3,7 @@
 // once, with a fixed seed, onto an offscreen canvas and then just blitted every frame.
 import { CELL, COLS, CORE, FIELD, GATES, ROWS } from './config.js';
 import { createRandom } from './random.js';
+import { drawGlyph } from './glyphs.js';
 
 let ground = null;
 let gridLines = null;
@@ -31,6 +32,24 @@ function stonePlates(g, rng) {
     g.stroke();
     g.strokeStyle = 'rgba(120,130,170,0.07)';
     g.lineWidth = 1;
+    g.stroke();
+  }
+}
+
+/** Soft broad dabs of dark colour, so the floor reads as hand-painted rather than flat. */
+function painterly(g, rng) {
+  const tints = ['38,30,60', '20,34,56', '52,34,30', '16,22,40', '40,40,70'];
+  g.lineCap = 'round';
+  for (let n = 0; n < 700; n += 1) {
+    const x = rng.range(0, FIELD.w);
+    const y = rng.range(0, FIELD.h);
+    const a = rng.range(0, 6.283);
+    const len = rng.range(14, 70);
+    g.strokeStyle = `rgba(${tints[n % tints.length]},${rng.range(0.05, 0.16)})`;
+    g.lineWidth = rng.range(5, 16);
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(a) * len * 0.5 + rng.range(-8, 8), y + Math.sin(a) * len * 0.5 + rng.range(-8, 8), x + Math.cos(a) * len, y + Math.sin(a) * len);
     g.stroke();
   }
 }
@@ -123,26 +142,59 @@ function scorches(g, rng) {
   }
 }
 
-/** Rune rings round the Core and burnt, cracked landings at each rift gate. */
+/** An engraved gold sigil round the Core, and burnt, cracked landings at each rift gate. */
 function landmarks(g) {
   const cx = (CORE.col + 0.5) * CELL;
   const cy = (CORE.row + 0.5) * CELL;
+  const star = (radius, offset) => {
+    g.beginPath();
+    for (let k = 0; k < 8; k += 1) {
+      const a = offset + (k / 8) * 6.283;
+      g[k === 0 ? 'moveTo' : 'lineTo'](cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+    }
+    g.closePath();
+  };
+  const triangle = (radius, up) => {
+    g.beginPath();
+    for (let k = 0; k < 3; k += 1) {
+      const a = (up ? -Math.PI / 2 : Math.PI / 2) + (k / 3) * 6.283;
+      g[k === 0 ? 'moveTo' : 'lineTo'](cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+    }
+    g.closePath();
+  };
+  const drawAll = (lineWidth, color, alpha) => {
+    g.strokeStyle = color;
+    g.globalAlpha = alpha;
+    g.lineWidth = lineWidth;
+    for (const r of [104, 92, 64]) {
+      g.beginPath();
+      g.arc(cx, cy, r, 0, 6.283);
+      g.stroke();
+    }
+    star(92, 0);
+    g.stroke();
+    star(92, Math.PI / 8);
+    g.stroke();
+    triangle(64, true);
+    g.stroke();
+    triangle(64, false);
+    g.stroke();
+    for (let k = 0; k < 48; k += 1) {
+      const a = (k / 48) * 6.283;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a) * 104, cy + Math.sin(a) * 104);
+      g.lineTo(cx + Math.cos(a) * (k % 4 === 0 ? 114 : 109), cy + Math.sin(a) * (k % 4 === 0 ? 114 : 109));
+      g.stroke();
+    }
+  };
+  drawAll(4.5, 'rgba(0,0,0,0.7)', 1);
   g.globalCompositeOperation = 'lighter';
-  for (const [r, a, w] of [[78, 0.35, 2], [64, 0.2, 1], [96, 0.14, 1]]) {
-    g.strokeStyle = `rgba(111,240,255,${a})`;
-    g.lineWidth = w;
-    g.beginPath();
-    g.arc(cx, cy, r, 0, 6.283);
-    g.stroke();
-  }
-  for (let k = 0; k < 24; k += 1) {
-    const a = (k / 24) * 6.283;
-    g.strokeStyle = 'rgba(111,240,255,0.25)';
-    g.lineWidth = 3;
-    g.beginPath();
-    g.arc(cx, cy, 87, a, a + 0.1);
-    g.stroke();
-  }
+  drawAll(1.8, '#d4aa55', 0.55);
+  ['fire', 'earth', 'water', 'storm'].forEach((kind, k) => {
+    const a = -Math.PI / 2 + (k / 4) * 6.283;
+    drawGlyph(g, kind, cx + Math.cos(a) * 78, cy + Math.sin(a) * 78, 9, 'rgba(212,170,85,0.75)', 2);
+  });
+  g.globalAlpha = 1;
   g.globalCompositeOperation = 'source-over';
   for (const gate of Object.values(GATES)) {
     const x = (gate.col + 0.5) * CELL;
@@ -177,6 +229,7 @@ export function getGround() {
   g.fillStyle = base;
   g.fillRect(0, 0, FIELD.w, FIELD.h);
   stonePlates(g, rng);
+  painterly(g, rng);
   speckle(g, rng);
   scorches(g, rng);
   cracks(g, rng);

@@ -11,7 +11,7 @@ import { setCell, toScreenX, toScreenY } from './grid.js';
 import { offerBoons, takeBoon } from './boons.js';
 import { damageCreature, spawnCreature } from './creatures.js';
 import { reactNow } from './reactions.js';
-import { addBolt, burst, updateFx } from './particles.js';
+import { addBolt, addText, burst, updateFx } from './particles.js';
 
 const BOON_PREFERENCE = ['frost', 'wide', 'arc', 'overflow', 'shield', 'slowdecay', 'siphon', 'lava', 'mend'];
 const IDLE = () => ({ queue: [], stroke: null, cooldown: 99, progress: 0, flip: 0 });
@@ -29,7 +29,7 @@ function advance(game, bot, seconds, until, god = false) {
     }
     if (game.phase === 'prep' && game.prepTimer > 3) callRift(game);
     if (god) {
-      game.core.hp = Math.max(game.core.hp, 70);
+      game.core.hp = Math.max(game.core.hp, game.godHp ?? 70);
       for (let i = 0; i < 4; i += 1) game.essence[i] = Math.max(game.essence[i], 55);
     }
     botStep(bot, game, STEP);
@@ -105,13 +105,13 @@ function stageCover(seed) {
   blob(game, LAVA, 3.5, 11, 2.4, 3);
   blob(game, ICE, 40, 12, 7.5, 7.5);
   blob(game, ICE, 41, 27, 5.5, 4);
-  river(game, WATER, 13, 28.5, 34, 28, 2.4, 1.4);
+  river(game, CHARGED, 13, 28.5, 34, 28, 2.4, 1.4);
   blob(game, CLOUD, 14, 4, 3, 1.4);
   blob(game, STEAM, 14, 12, 2.6, 1.6);
   blob(game, EARTH, 3, 30, 1.8, 2.2);
   // Fourteen creatures of every kind, spread out: none under the Colossus, the Core or the cursor.
   const crowd = [
-    ['golem', 'W', 14.5, 8], ['ram', 'W', 17, 30.2], ['imp', 'W', 13, 19], ['wraith', 'N', 12, 14.5], ['wraith', 'N', 30.5, 7],
+    ['golem', 'W', 14.5, 8], ['ram', 'W', 14, 27], ['imp', 'W', 13, 19], ['wraith', 'N', 12, 14.5], ['wraith', 'N', 30.5, 7],
     ['beetle', 'S', 34.2, 23.2], ['imp', 'E', 38.5, 19], ['golem', 'E', 43, 9], ['wraith', 'E', 44, 24], ['ram', 'E', 36, 29.5],
     ['swarm', 'W', 20.5, 25], ['swarm', 'W', 22.8, 26.4], ['swarm', 'W', 26, 24.6], ['imp', 'E', 31.5, 15],
   ];
@@ -162,6 +162,9 @@ function stageCover(seed) {
   }
   for (let n = 0; n < 5; n += 1) updateFx(game.fx, STEP);
   game.fx.texts = game.fx.texts.filter((t) => t.text.startsWith('CHAIN'));
+  // Two big, clean feedback popups, well apart: a shatter on the frozen imp and an overload on the charged water.
+  addText(game.fx, toScreenX(38.5), toScreenY(16.6), 'SHATTER!', { color: '#dff6ff', size: 40, life: 3, vy: -2, angle: 0.05 });
+  addText(game.fx, toScreenX(25), toScreenY(26.2), 'OVERLOAD!', { color: '#ffe23a', size: 40, life: 3, vy: -2, angle: -0.04 });
   game.brush = 3;
   setCursor(game, toScreenX(31), toScreenY(19), false);
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
@@ -201,6 +204,8 @@ function stageBoon(seed) {
 function stageWin(seed) {
   const game = createGame(seed);
   const bot = createBot();
+  takeBoon(game, 'frost');
+  game.godHp = 100;
   for (let n = 0; n < 160 && game.phase !== 'won'; n += 1) {
     advance(game, bot, 20, null, true);
     if (game.boss && game.rift.clock > 40) {

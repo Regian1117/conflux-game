@@ -2,17 +2,24 @@
 // numbers in game.mods, which the rest of the simulation reads (brush size, lava spread, frost...).
 import { BRUSH, CORE, ESSENCE } from './config.js';
 
+/** rarity: common / rare / epic (colours in RARITY); `glyph` names the glyph drawn on its card and in the HUD. */
 export const BOONS = [
-  { id: 'frost', name: 'Frost Touch', desc: 'Water freezes to ICE after a moment. Ice holds creatures; STORM shatters it.', color: '#bfeaff', icon: '*', max: 1 },
-  { id: 'wide', name: 'Wider Brush', desc: 'Your brush paints a bigger disc.', color: '#ffd24a', icon: 'O', max: 2 },
-  { id: 'lava', name: 'Lava Spreads Faster', desc: 'Lava creeps into earth much quicker.', color: '#ff6a1f', icon: '~', max: 3 },
-  { id: 'arc', name: 'Chain Lightning +1', desc: 'Storm cells arc to one more creature each.', color: '#ffe23a', icon: 'Z', max: 3 },
-  { id: 'overflow', name: 'Essence Overflow', desc: 'Bigger essence pools that refill faster.', color: '#6dffb0', icon: '+', max: 3 },
-  { id: 'shield', name: 'Core Shield', desc: 'The Core gains a 40 point shield, restored every rift.', color: '#6ff0ff', icon: 'S', max: 2 },
-  { id: 'slowdecay', name: 'Slow Decay', desc: 'Painted cells last 35% longer.', color: '#c9a36a', icon: 'T', max: 2 },
-  { id: 'mend', name: 'Core Mend', desc: 'Heal the Core for 35 right now.', color: '#ff7aa0', icon: 'H', max: 9 },
-  { id: 'siphon', name: 'Kill Siphon', desc: 'Kills return 60% more essence.', color: '#c58aff', icon: 'K', max: 2 },
+  { id: 'frost', name: 'Frost Touch', desc: 'Water freezes to ICE after a moment.', synergy: 'Pairs with STORM: frozen ice shatters.', glyph: 'frost', rarity: 'rare', color: '#bfeaff', icon: '*', max: 1 },
+  { id: 'wide', name: 'Wider Brush', desc: 'Your brush paints a bigger disc.', synergy: 'Pairs with Essence Overflow.', glyph: 'ring', rarity: 'common', color: '#ffd24a', icon: 'O', max: 2 },
+  { id: 'lava', name: 'Lava Spreads Faster', desc: 'Lava creeps into earth much quicker.', synergy: 'Pairs with EARTH walls.', glyph: 'lava', rarity: 'rare', color: '#ff6a1f', icon: '~', max: 3 },
+  { id: 'arc', name: 'Chain Lightning +1', desc: 'Storm cells arc to one more creature.', synergy: 'Pairs with Charged Water.', glyph: 'shock', rarity: 'epic', color: '#ffe23a', icon: 'Z', max: 3 },
+  { id: 'overflow', name: 'Essence Overflow', desc: 'Bigger essence pools, refilled faster.', synergy: 'Pairs with Wider Brush.', glyph: 'water', rarity: 'common', color: '#6dffb0', icon: '+', max: 3 },
+  { id: 'shield', name: 'Core Shield', desc: 'The Core gains a 40 point shield each rift.', synergy: 'Pairs with Core Mend.', glyph: 'shield', rarity: 'common', color: '#6ff0ff', icon: 'S', max: 2 },
+  { id: 'slowdecay', name: 'Slow Decay', desc: 'Painted cells last 35% longer.', synergy: 'Pairs with Frost Touch: ice lasts.', glyph: 'hourglass', rarity: 'common', color: '#c9a36a', icon: 'T', max: 2 },
+  { id: 'mend', name: 'Core Mend', desc: 'Heal the Core for 35 right now.', synergy: 'Pairs with Core Shield.', glyph: 'cross', rarity: 'common', color: '#ff7aa0', icon: 'H', max: 9 },
+  { id: 'siphon', name: 'Kill Siphon', desc: 'Kills return 60% more essence.', synergy: 'Pairs with Swarm kills.', glyph: 'spiral', rarity: 'epic', color: '#c58aff', icon: 'K', max: 2 },
 ];
+
+export const RARITY = {
+  common: { label: 'COMMON', color: '#9fb3d9' },
+  rare: { label: 'RARE', color: '#4aa8ff' },
+  epic: { label: 'EPIC', color: '#c25cff' },
+};
 
 export function boonById(id) {
   return BOONS.find((b) => b.id === id);
