@@ -1,7 +1,7 @@
 // The always-visible interface: the rift counter and incoming creature queue (with a NEXT line)
 // along the top, Core health, the four brushes with keys and essence, score and chain, held boons,
 // the boss armour strip, a first-sighting tip and the WIN / LOSE reminder at the bottom.
-import { CORE, FIELD, PALETTE as P, PLATES, REACT, RIFT_COUNT, W } from './config.js';
+import { CORE, FIELD, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, W } from './config.js';
 import { BRUSHES, ELEMENTS } from './elements.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
@@ -125,7 +125,7 @@ function drawScoreBlock(ctx, game, bests) {
 
 function drawBoonList(ctx, game) {
   const y = 514;
-  drawPanel(ctx, PANEL_X, y, PANEL_W, 170);
+  drawPanel(ctx, PANEL_X, y, PANEL_W, H - 34 - y);
   drawText(ctx, 'BOONS', PANEL_X + 12, y + 22, { size: 13, color: P.muted, outline: 0 });
   const held = BOONS.filter((b) => game.boons[b.id]);
   if (held.length === 0) {
@@ -192,8 +192,8 @@ export function drawHud(ctx, game, bests, time) {
   drawBoonList(ctx, game);
   drawBossStrip(ctx, game, time);
   drawTip(ctx, game);
-  drawText(ctx, 'WIN: clear 7 rifts and the Colossus', 16, 708, { size: 17, color: P.good });
-  drawText(ctx, '·', 322, 708, { size: 17, color: P.muted });
-  drawText(ctx, 'LOSE: the Core shatters', 336, 708, { size: 17, color: P.danger });
-  drawText(ctx, `[1-4] brush   [SPACE] open rift   [P] pause   [M] ${isMuted() ? 'unmute' : 'mute'}   hold mouse to paint`, W - 12, 708, { size: 13, color: P.muted, align: 'right', weight: 700, outline: 0 });
+  drawText(ctx, 'WIN: clear 7 rifts and the Colossus', 16, H - 12, { size: 17, color: P.good });
+  drawText(ctx, '·', 322, H - 12, { size: 17, color: P.muted });
+  drawText(ctx, 'LOSE: the Core shatters', 336, H - 12, { size: 17, color: P.danger });
+  drawText(ctx, `[1-4] brush   [SPACE] open rift   [P] pause   [M] ${isMuted() ? 'unmute' : 'mute'}   hold mouse to paint`, W - 12, H - 12, { size: 13, color: P.muted, align: 'right', weight: 700, outline: 0 });
 }

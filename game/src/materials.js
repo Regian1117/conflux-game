@@ -105,7 +105,8 @@ function rim(g, grid, type, cells, color, width) {
   g.stroke();
 }
 
-const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARGED]: '#1590c4', [ICE]: '#8fd0ee', [EARTH]: '#5d4528', [STORM]: '#2a1470', [MAGNET]: '#241c2c', [CLOUD]: '#2d2570' };
+const ICE_TONES = ['#f2fdff', '#c9ecfb', '#9bd6f2', '#69b0de', '#dff6ff', '#7cc3ea', '#4f8fc8', '#ffffff'];
+const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARGED]: '#1590c4', [ICE]: '#6fb8e0', [EARTH]: '#5d4528', [STORM]: '#2a1470', [MAGNET]: '#241c2c', [CLOUD]: '#2d2570' };
 const RIMS = { [FIRE]: '#ffd24a', [LAVA]: '#ff8a2a', [WATER]: '#bff2ff', [CHARGED]: '#ffffff', [ICE]: '#ffffff', [EARTH]: '#b09258', [STORM]: '#ffe23a', [MAGNET]: '#ff6a86', [CLOUD]: '#b9a8ff' };
 
 /** Per-element detail painting, in layer coordinates, clipped to the blob by source-atop. */
@@ -177,30 +178,37 @@ const DETAILS = {
     ripples(g, cells, t * 2, 'rgba(230,250,255,0.9)');
   },
   [ICE](g, cells) {
-    for (const i of cells) {
-      const x = (i % COLS) * CELL;
-      const y = Math.floor(i / COLS) * CELL;
-      const h = hash(i, 1);
-      g.fillStyle = 'rgba(240,252,255,0.85)';
-      g.beginPath();
-      g.moveTo(x + 2, y + 2);
-      g.lineTo(x + 11 + h * 4, y + 3);
-      g.lineTo(x + 5, y + 13 + h * 4);
-      g.closePath();
-      g.fill();
-      g.fillStyle = 'rgba(70,150,200,0.65)';
-      g.beginPath();
-      g.moveTo(x + CELL, y + 4);
-      g.lineTo(x + CELL, y + CELL);
-      g.lineTo(x + 8 + h * 5, y + CELL);
-      g.closePath();
-      g.fill();
-      g.strokeStyle = '#ffffff';
-      g.lineWidth = 1.6;
-      g.beginPath();
-      g.moveTo(x + 4, y + CELL - 3);
-      g.lineTo(x + 15, y + 5 + h * 3);
-      g.stroke();
+    // Big overlapping crystal facets, each a jittered polygon in one of several light and dark
+    // blue-white tones, centred on a scattering of cells: no cell-sized repetition shows through.
+    for (const pass of [0, 1]) {
+      for (const i of cells) {
+        if (hash(i, 1) < (pass ? 0.72 : 0.42)) continue;
+        const x = (i % COLS) * CELL + 10 + (hash(i, 11) - 0.5) * 14;
+        const y = Math.floor(i / COLS) * CELL + 10 + (hash(i, 12) - 0.5) * 14;
+        const n = 3 + ((hash(i, 2) * 3) | 0);
+        const rad = (pass ? 9 : 16) + hash(i, 3) * (pass ? 12 : 22);
+        const rot = hash(i, 4) * 6.283;
+        const pts = [];
+        for (let k = 0; k < n; k += 1) {
+          const ang = rot + (k / n) * 6.283 + (hash(i, 10 + k) - 0.5) * 0.9;
+          const rr = rad * (0.5 + hash(i, 20 + k) * 0.7);
+          pts.push([x + Math.cos(ang) * rr, y + Math.sin(ang) * rr * 0.8]);
+        }
+        g.beginPath();
+        pts.forEach((pt, k) => (k === 0 ? g.moveTo(pt[0], pt[1]) : g.lineTo(pt[0], pt[1])));
+        g.closePath();
+        g.fillStyle = ICE_TONES[(hash(i, 5) * ICE_TONES.length) | 0];
+        g.fill();
+        g.strokeStyle = 'rgba(40,90,150,0.45)';
+        g.lineWidth = 1.2;
+        g.stroke();
+        g.strokeStyle = '#ffffff';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(pts[0][0], pts[0][1]);
+        g.lineTo(pts[1][0], pts[1][1]);
+        g.stroke();
+      }
     }
   },
   [EARTH](g, cells) {
@@ -344,6 +352,60 @@ function drawBolts(ctx, cloud, charged, t) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/** Tall spikes along the top edge of an ice field, and twinkling frost sparkles on it. */
+function drawIceExtras(ctx, grid, cells, t) {
+  for (const i of cells) {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const x = FIELD.x + col * CELL;
+    const y = FIELD.y + row * CELL;
+    if (row > 0 && grid.type[i - COLS] === ICE) continue;
+    if (hash(i, 30) < 0.62) continue;
+    const h = 22 + hash(i, 31) * 34;
+    const lean = (hash(i, 32) - 0.5) * 16;
+    const grad = ctx.createLinearGradient(x, y, x, y - h);
+    grad.addColorStop(0, '#5fa8d8');
+    grad.addColorStop(1, '#ffffff');
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 3);
+    ctx.lineTo(x + 10 + lean, y - h);
+    ctx.lineTo(x + 18, y + 3);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = '#2c5f93';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y);
+    ctx.lineTo(x + 10 + lean, y - h);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  for (const i of cells) {
+    if (hash(i, 40) < 0.86) continue;
+    const tw = Math.sin(t * 3 + hash(i, 41) * 9);
+    if (tw < 0.1) continue;
+    const x = FIELD.x + (i % COLS) * CELL + 4 + hash(i, 42) * 12;
+    const y = FIELD.y + Math.floor(i / COLS) * CELL + 4 + hash(i, 43) * 12;
+    const r = 3 + tw * 6;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(x - r, y);
+    ctx.lineTo(x, y - r * 0.18);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r * 0.18);
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r * 0.18, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r * 0.18, y);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 /** Paint every painted cell of the grid as materials. `time` is seconds, for the animation. */
 export function drawMaterials(ctx, game, time) {
   const grid = game.grid;
@@ -370,6 +432,11 @@ export function drawMaterials(ctx, game, time) {
       ctx.fill();
     }
     traceBlob(ctx, grid, type, cells, FIELD.x, FIELD.y);
+    if (type === ICE) {
+      ctx.strokeStyle = 'rgba(168,230,255,0.3)';
+      ctx.lineWidth = 11;
+      ctx.stroke();
+    }
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 5;
     ctx.stroke();
@@ -390,6 +457,7 @@ export function drawMaterials(ctx, game, time) {
     g.globalCompositeOperation = 'source-over';
     // Fade cells that are about to expire: blink handled by the per-cell life below.
     ctx.drawImage(layer, FIELD.x, FIELD.y);
+    if (type === ICE) drawIceExtras(ctx, grid, cells, time);
   }
 
   // Cells about to expire blink, so the player sees what is fading.

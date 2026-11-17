@@ -15,9 +15,12 @@ export function boonCardAt(x, y) {
   return BOON_CARDS.findIndex((c) => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h);
 }
 
+/** The 720-line layouts of the full-screen overlays are centred in the taller canvas. */
+export const OVERLAY_OFFSET = (H - 720) / 2;
+
 function dim(ctx, alpha, full = true) {
   ctx.fillStyle = `rgba(4,5,9,${alpha})`;
-  if (full) ctx.fillRect(0, 0, W, H);
+  if (full) ctx.fillRect(0, -OVERLAY_OFFSET, W, H);
   else ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
 }
 
@@ -157,29 +160,67 @@ function drawKillRow(ctx, game, y, time) {
   });
 }
 
-/** The dead Colossus, a dark cracked husk under rising light, drawn behind the win results. */
+/** Confetti and firework rings for the win screen, positions derived from the clock only. */
+function drawCelebration(ctx, time) {
+  const colors = ['#ffd24a', '#ff5a1f', '#22c3ff', '#a65cff', '#6dffb0', '#ffffff'];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.clip();
+  for (let k = 0; k < 90; k += 1) {
+    const x = FIELD.x + ((k * 7919) % FIELD.w) + Math.sin(time * 1.5 + k) * 18;
+    const y = FIELD.y + ((time * (50 + (k % 5) * 14) + k * 61) % (FIELD.h + 40)) - 20;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(time * (1 + (k % 4)) + k);
+    ctx.fillStyle = colors[k % colors.length];
+    ctx.fillRect(-4, -2, 8, 4);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  for (let f = 0; f < 4; f += 1) {
+    const phase = (time * 0.55 + f * 0.27) % 1;
+    const cx = FIELD.x + 120 + f * 240 + (f % 2) * 40;
+    const cy = FIELD.y + 120 + (f % 3) * 70;
+    for (let k = 0; k < 18; k += 1) {
+      const a = (k / 18) * 6.283;
+      const r = phase * 90;
+      ctx.globalAlpha = 1 - phase;
+      ctx.fillStyle = colors[(k + f) % colors.length];
+      ctx.fillRect(cx + Math.cos(a) * r - 2, cy + Math.sin(a) * r + phase * phase * 30 - 2, 4, 4);
+    }
+  }
+  ctx.restore();
+}
+
+/** The dead Colossus, lit gold from within and from behind, under rising light and confetti. */
 function drawVictoryBackdrop(ctx, time) {
-  ctx.fillStyle = '#07080d';
+  ctx.fillStyle = '#0a0b12';
   ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
   ctx.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 7; k += 1) {
-    const x = 120 + k * 120 + Math.sin(time + k) * 12;
-    const beam = ctx.createLinearGradient(x, 700, x, 80);
-    beam.addColorStop(0, 'rgba(255,210,120,0.28)');
+  const bottom = FIELD.y + FIELD.h;
+  for (let k = 0; k < 8; k += 1) {
+    const x = FIELD.x + 70 + k * 125 + Math.sin(time + k) * 12;
+    const beam = ctx.createLinearGradient(x, bottom, x, FIELD.y);
+    beam.addColorStop(0, 'rgba(255,210,120,0.3)');
     beam.addColorStop(1, 'rgba(255,210,120,0)');
     ctx.fillStyle = beam;
-    ctx.fillRect(x - 26, 80, 52, 620);
+    ctx.fillRect(x - 24, FIELD.y, 48, FIELD.h);
   }
+  const halo = ctx.createRadialGradient(W / 2 - 150, bottom - 300, 20, W / 2 - 150, bottom - 300, 420);
+  halo.addColorStop(0, 'rgba(255,190,90,0.55)');
+  halo.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
   ctx.globalCompositeOperation = 'source-over';
   ctx.save();
-  ctx.translate(W / 2 - 150, 430);
-  drawColossus(ctx, 100, time, { ruin: true, plates: 4 });
+  ctx.translate(W / 2 - 150, bottom - 250);
+  drawColossus(ctx, 105, time, { ruin: true, plates: 4 });
   ctx.restore();
   for (let k = 0; k < 16; k += 1) {
-    const x = 80 + ((k * 331) % 760);
-    const y = 560 + ((k * 97) % 110);
-    const color = PLATES[k % 4].color;
-    ctx.fillStyle = color;
+    const x = FIELD.x + 40 + ((k * 331) % 800);
+    const y = bottom - 110 + ((k * 97) % 90);
+    ctx.fillStyle = PLATES[k % 4].color;
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
     ctx.moveTo(x, y - 9);
@@ -187,27 +228,20 @@ function drawVictoryBackdrop(ctx, time) {
     ctx.lineTo(x - 9, y + 8);
     ctx.fill();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.3;
     ctx.fillRect(x - 14, y - 14, 28, 28);
     ctx.globalCompositeOperation = 'source-over';
   }
   ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 40; k += 1) {
-    const x = 60 + ((k * 197) % 900);
-    const y = 690 - ((time * 40 + k * 53) % 600);
-    ctx.fillStyle = k % 2 ? '#ffd24a' : '#ffffff';
-    ctx.globalAlpha = 0.7;
-    ctx.fillRect(x, y, 3, 3);
-  }
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
+  drawCelebration(ctx, time);
 }
 
 /** The end screens share a layout; `won` picks the words and colours. */
 export function drawEnd(ctx, game, bests, won, time) {
   if (won) drawVictoryBackdrop(ctx, time);
-  dim(ctx, won ? 0.34 : 0.78);
+  ctx.save();
+  ctx.translate(0, OVERLAY_OFFSET);
+  dim(ctx, won ? 0.3 : 0.78);
   const color = won ? '#ffd24a' : '#ff4a5e';
   if (won) {
     drawText(ctx, 'CONFLUX MASTERED', W / 2, 205, { size: 92, color, align: 'center' });
@@ -242,4 +276,5 @@ export function drawEnd(ctx, game, bests, won, time) {
   const glow = 0.8 + 0.2 * Math.sin(time * 5);
   drawText(ctx, won ? 'Press R to play again' : 'Press R to retry', W / 2, 626, { size: 50, color: `rgba(255,255,255,${glow})`, align: 'center' });
   drawText(ctx, won ? 'a perfect storm of elements' : 'paint earlier, chain harder', W / 2, 668, { size: 18, color: P.muted, align: 'center', outline: 0 });
+  ctx.restore();
 }

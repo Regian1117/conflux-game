@@ -3,7 +3,7 @@
 // gameplay and the same seed always gives the same frame. A few helpers stage the moment worth
 // photographing (a trap laid, the board filled with every element, a chain about to land) by
 // painting through the same grid functions the player's brush uses.
-import { COLS, STEP } from './config.js';
+import { COLS, ROWS, STEP } from './config.js';
 import { CHARGED, CLOUD, EARTH, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
 import { botStep, createBot } from './autopilot.js';
 import { beginNextPrep, callRift, createGame, setCursor, updateGame } from './game.js';
@@ -44,8 +44,8 @@ function blob(game, type, cx, cy, rx, ry, density = 1) {
     for (let col = Math.floor(cx - rx); col <= Math.ceil(cx + rx); col += 1) {
       const dx = (col + 0.5 - cx) / rx;
       const dy = (row + 0.5 - cy) / ry;
-      if (dx * dx + dy * dy > 1 || col < 1 || row < 1 || col > COLS - 2 || row > 28) continue;
-      if (Math.abs(col - 24) <= 1 && Math.abs(row - 15) <= 1) continue;
+      if (dx * dx + dy * dy > 1 || col < 1 || row < 1 || col > COLS - 2 || row > ROWS - 2) continue;
+      if (Math.abs(col - 24) <= 1 && Math.abs(row - 17) <= 1) continue;
       if (game.rng.chance(density)) setCell(game.grid, col, row, type, 1.8);
     }
   }
@@ -79,7 +79,7 @@ function place(game, kind, gate, x, y, hpMul = 1.6) {
   return c;
 }
 
-/** Cover: rift 7, the Hollow Colossus mid-stride over a board full of every element. */
+/** Cover: rift 7, the Hollow Colossus stomping toward the Core over a board full of every element. */
 function stageCover(seed) {
   const game = createGame(seed);
   const bot = createBot();
@@ -91,49 +91,52 @@ function stageCover(seed) {
   game.score = 48250;
   advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
   const boss = game.boss;
+  const BOSS_X = 24.5;
+  const BOSS_Y = 11.9;
   if (boss) {
-    boss.x = 24.5;
-    boss.y = 12.6;
+    boss.x = BOSS_X;
+    boss.y = BOSS_Y;
   }
   game.grid.type.fill(0);
   game.creatures = game.creatures.filter((c) => c === boss);
   // A lava river down the west, an ice field in the east, charged water arcing between them.
-  river(game, LAVA, 7, 1, 9, 28, 4.2, 2.4);
-  river(game, LAVA, 9, 20, 20, 25, 2.6, 1.4);
-  blob(game, LAVA, 4, 8, 2.4, 3);
-  blob(game, ICE, 39, 10, 8, 7);
-  blob(game, ICE, 40, 22, 6, 4.2);
-  blob(game, ICE, 31, 4, 3.4, 2);
-  river(game, WATER, 13, 22.5, 36, 21.5, 2.6, 1.6);
-  river(game, WATER, 14, 26.5, 33, 26, 2, 1);
-  blob(game, STORM, 33, 15, 2.2, 1.8);
-  blob(game, CLOUD, 17, 4, 3.2, 1.6);
-  blob(game, CLOUD, 32, 3, 3.4, 1.5);
-  blob(game, CLOUD, 12, 14, 2.4, 1.4);
-  blob(game, STEAM, 14, 9, 4.2, 2.4);
-  blob(game, STEAM, 25, 21, 4, 1.6);
-  blob(game, STEAM, 36, 17, 3, 2);
-  blob(game, FIRE, 19, 17, 2, 1.4);
-  blob(game, FIRE, 29, 18, 2, 1.2);
-  blob(game, EARTH, 17, 12.5, 1.6, 1.2);
-  blob(game, EARTH, 44, 15, 1.4, 3.4);
-  blob(game, EARTH, 3, 24, 1.8, 2.2);
-  blob(game, MAGNET, 28, 25, 2.2, 1.3);
-  // Everything that lives: 20 creatures of every kind.
+  river(game, LAVA, 7, 1, 9, 32, 4.2, 2.4);
+  river(game, LAVA, 9, 25, 19, 30, 2.6, 1.4);
+  blob(game, LAVA, 3.5, 11, 2.4, 3);
+  blob(game, ICE, 39, 12, 8, 8);
+  blob(game, ICE, 40, 27, 6, 4.4);
+  blob(game, ICE, 31, 5, 3.4, 2.2);
+  river(game, WATER, 13, 27.5, 36, 26.5, 2.6, 1.6);
+  river(game, WATER, 14, 31.5, 33, 31, 2, 1);
+  blob(game, STORM, 33, 20, 2.2, 1.8);
+  blob(game, CLOUD, 15, 4, 3.2, 1.6);
+  blob(game, CLOUD, 33, 3.5, 3.4, 1.5);
+  blob(game, CLOUD, 12, 17, 2.4, 1.4);
+  blob(game, STEAM, 14, 11, 4.2, 2.4);
+  blob(game, STEAM, 27, 26, 4, 1.6);
+  blob(game, STEAM, 36, 21, 3, 2);
+  blob(game, FIRE, 18, 22, 2, 1.4);
+  blob(game, FIRE, 30, 23, 2, 1.2);
+  blob(game, EARTH, 16, 15.5, 1.6, 1.2);
+  blob(game, EARTH, 44.5, 18, 1.4, 3.4);
+  blob(game, EARTH, 3, 30, 1.8, 2.2);
+  blob(game, MAGNET, 27, 31, 2.2, 1.3);
+  // Everything that lives: 20 creatures of every kind, none under the Colossus or the Core.
   const crowd = [
-    ['golem', 'W', 15.5, 5.5], ['golem', 'E', 33, 6.5], ['ram', 'W', 14, 18.5], ['ram', 'E', 29.5, 13.5],
-    ['wraith', 'N', 20, 8], ['wraith', 'N', 30, 9.5], ['wraith', 'N', 26, 4.2], ['beetle', 'S', 35.5, 14],
-    ['beetle', 'S', 18.5, 21], ['imp', 'E', 41, 17], ['imp', 'E', 38, 26], ['imp', 'W', 21, 27], ['imp', 'W', 12, 17],
-    ['swarm', 'W', 22, 18], ['swarm', 'W', 23, 19.1], ['swarm', 'W', 21.2, 19.2], ['swarm', 'W', 26, 19], ['swarm', 'W', 27, 18.2],
-    ['swarm', 'W', 31, 22.6], ['swarm', 'W', 11, 6],
+    ['golem', 'W', 15.5, 7.5], ['golem', 'E', 33.5, 9], ['ram', 'W', 13.5, 21], ['ram', 'E', 31, 15.5],
+    ['wraith', 'N', 18.5, 9.5], ['wraith', 'N', 36, 7.5], ['wraith', 'N', 29.5, 13], ['beetle', 'S', 35.5, 18],
+    ['beetle', 'S', 18, 24.5], ['imp', 'E', 41, 20], ['imp', 'E', 38, 30], ['imp', 'W', 21, 30], ['imp', 'W', 12, 20],
+    ['swarm', 'W', 21, 21], ['swarm', 'W', 22, 22.1], ['swarm', 'W', 20.2, 22.2], ['swarm', 'W', 28, 21], ['swarm', 'W', 29, 20.2],
+    ['swarm', 'W', 32, 25.6], ['swarm', 'W', 11, 8],
   ];
   for (const [kind, gate, x, y] of crowd) place(game, kind, gate, x, y);
   game.core.hp = 74;
   advance(game, IDLE(), 0.4, null, true);
   game.core.hp = 74;
+  game.core.shield = 7;
   if (boss) {
-    boss.x = 24.5;
-    boss.y = 12.6;
+    boss.x = BOSS_X;
+    boss.y = BOSS_Y;
     boss.plates = 2;
     boss.exposed = 0;
     boss.plateT = [boss.age - 1.1, boss.age - 0.45];
@@ -142,9 +145,10 @@ function stageCover(seed) {
     boss.stompTimer = 6;
   }
   // Explosions: real particle bursts at spots across the board.
-  for (const [x, y, kind] of [[12, 16, 'spark'], [35, 19, 'zap'], [28, 6, 'spark'], [16, 24, 'ember'], [40, 6, 'shard']]) burst(game.fx, kind, toScreenX(x), toScreenY(y), 26);
+  for (const [x, y, kind] of [[12, 19, 'spark'], [35, 22, 'zap'], [30, 7, 'spark'], [16, 27, 'ember'], [42, 7, 'shard'], [22, 22, 'spark']]) burst(game.fx, kind, toScreenX(x), toScreenY(y), 26);
   // A last chain lands through the game's own reaction path: only STORMSTEAM and LAVA are new
-  // to it, so it reads CHAIN x7. It is placed low on the right, away from the Colossus.
+  // to it, so it reads CHAIN x7. Its callout is then set at the lower left,
+  // slightly angled, over the lava river and clear of the Colossus, the Core and the boss panel.
   game.fx.texts.length = 0;
   game.tip = null;
   if (boss) boss.plates = 3;
@@ -155,14 +159,23 @@ function stageCover(seed) {
   game.chain.lastGain = -9;
   game.chain.kinds.clear();
   ['STEAM', 'SHOCK', 'QUENCH', 'STRIKE', 'MELT', 'MAGNET', 'FROST', 'SHATTER'].forEach((n) => game.chain.kinds.add(n));
-  reactNow(game, [{ name: 'STORMSTEAM', x: 34.5, y: 25.5 }, { name: 'LAVA', x: 33.5, y: 25.5 }]);
+  reactNow(game, [{ name: 'STORMSTEAM', x: 8.5, y: 9.5 }, { name: 'LAVA', x: 7.5, y: 9.5 }]);
+  const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
+  if (callout) {
+    callout.x = 352;
+    callout.y = toScreenY(23.4);
+    callout.size = 38;
+    callout.angle = -0.09;
+    callout.life = callout.max = 3;
+    callout.vy = -2;
+  }
   if (boss) {
-    for (const dx of [-30, 5, 40]) addBolt(game.fx, toScreenX(boss.x) + dx * 2, toScreenY(0.6), toScreenX(boss.x) + dx, toScreenY(boss.y) - 150, '#c58aff', 0.3);
+    for (const dx of [-30, 5, 40]) addBolt(game.fx, toScreenX(boss.x) + dx * 2, toScreenY(0.6), toScreenX(boss.x) + dx, toScreenY(boss.y) - 190, '#c58aff', 0.3);
     boss.plates = 2;
   }
   for (let n = 0; n < 5; n += 1) updateFx(game.fx, STEP);
   game.brush = 3;
-  setCursor(game, toScreenX(39), toScreenY(20), false);
+  setCursor(game, toScreenX(40), toScreenY(24), false);
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }
 
@@ -171,24 +184,28 @@ function decorate(game, spots) {
   for (const [type, x, y, rx, ry] of spots) blob(game, type, x, y, rx, ry);
 }
 
-/** Early play: rift 2 with a fire-and-water trap laid across the Golem's path. */
+/** Early play: rift 2 with a fire-and-water steam trap mid-reaction, creatures caught inside. */
 function stageEarly(seed) {
   const game = createGame(seed);
   const bot = createBot();
   const golem = (g) => g.creatures.find((c) => c.kind === 'golem');
-  advance(game, bot, 160, (g) => g.riftNum === 2 && golem(g) !== undefined && golem(g).x < 40);
+  advance(game, bot, 160, (g) => g.riftNum === 2 && golem(g) !== undefined && golem(g).x < 41);
   game.grid.type.fill(0);
-  decorate(game, [[EARTH, 6, 5, 2, 1.4], [EARTH, 42, 25, 2.4, 1.6], [LAVA, 10, 24, 2.6, 1.6], [ICE, 40, 5, 3, 1.6], [WATER, 14, 6, 3, 1.4], [STEAM, 20, 24, 3, 1.4], [CLOUD, 30, 4, 2.6, 1.2], [FIRE, 45, 20, 1.2, 1.2], [LAVA, 36, 27, 3.4, 1.2], [WATER, 6, 15, 1.6, 4], [ICE, 24, 26, 2.6, 1.4], [EARTH, 24, 5, 2.4, 1.2], [STORM, 44, 9, 1.4, 1.8], [MAGNET, 18, 21, 1.8, 1.2], [CLOUD, 8, 9, 2.4, 1.3], [FIRE, 12, 12, 1.5, 1.2]]);
-  for (const [x, y] of [[16, 9], [17, 9.7], [15.2, 10.2], [16.4, 10.6], [30, 24], [31, 24.8], [32, 24.2], [26, 6], [27, 6.8]]) place(game, 'swarm', 'N', x, y);
-  place(game, 'imp', 'W', 9, 17);
-  place(game, 'imp', 'W', 6, 14);
+  decorate(game, [[EARTH, 6, 6, 2, 1.4], [EARTH, 42, 29, 2.4, 1.6], [LAVA, 10, 28, 2.6, 1.6], [ICE, 40, 6, 3.4, 2], [WATER, 14, 7, 3, 1.4], [STEAM, 20, 28, 3, 1.4], [CLOUD, 30, 5, 2.6, 1.2], [FIRE, 45, 24, 1.2, 1.2], [LAVA, 36, 31, 3.4, 1.2], [WATER, 6, 18, 1.6, 4], [ICE, 24, 30, 2.6, 1.4], [EARTH, 24, 6, 2.4, 1.2], [STORM, 44, 10, 1.4, 1.8], [MAGNET, 18, 25, 1.8, 1.2], [CLOUD, 8, 11, 2.4, 1.3], [FIRE, 12, 14, 1.5, 1.2], [WATER, 31, 28, 3, 1.2], [EARTH, 12, 22, 1.4, 1.4]]);
+  // The player's trap: a water stroke, then fire beside it, across the Golem's path.
   const hand = createBot();
-  hand.queue.push({ brush: 1, ax: 33.2, ay: 10.5, bx: 33.2, by: 20.5 }, { brush: 0, ax: 34.9, ay: 20.5, bx: 34.9, by: 10.5 });
+  hand.queue.push({ brush: 1, ax: 33.2, ay: 12.5, bx: 33.2, by: 22.5 }, { brush: 0, ax: 34.9, ay: 22.5, bx: 34.9, by: 12.5 });
   hand.cooldown = 0;
   advance(game, hand, 4, () => hand.queue.length === 0 && !hand.stroke);
-  advance(game, IDLE(), 12, () => golem(game) !== undefined && golem(game).x < 35.2);
+  // Creatures walk into the trap: a mix caught in the steam, imps drowning in the water column.
+  for (const [kind, x, y] of [['swarm', 34, 14], ['swarm', 34.8, 15.2], ['swarm', 33.6, 16.4], ['swarm', 35.4, 18], ['swarm', 34.2, 19.4], ['swarm', 33.8, 20.6], ['imp', 33.2, 13.5], ['imp', 33.2, 18.5], ['imp', 33.2, 21.5]]) place(game, kind, 'E', x, y, 1.3);
+  place(game, 'swarm', 'N', 16, 11);
+  place(game, 'swarm', 'N', 17, 11.8);
+  place(game, 'ram', 'W', 9, 17);
+  advance(game, IDLE(), 0.55);
+  game.tip = null;
   game.brush = 0;
-  setCursor(game, toScreenX(30.5), toScreenY(12.5), false);
+  setCursor(game, toScreenX(30.5), toScreenY(14.5), false);
   return { game, screen: 'play', bests: { score: 0, chain: 0 }, time: game.t };
 }
 
@@ -197,7 +214,7 @@ function stageBoon(seed) {
   const game = createGame(seed);
   const bot = createBot();
   advance(game, bot, 400, (g) => g.riftNum === 5 && g.rift.clock > 27, true);
-  decorate(game, [[ICE, 6, 5, 3.4, 2.2], [WATER, 40, 25, 5, 2.4], [CLOUD, 38, 4, 3.4, 1.6], [EARTH, 8, 25, 2.4, 2.4], [MAGNET, 43, 14, 1.8, 1.6], [LAVA, 20, 27, 4, 1.3], [LAVA, 6, 14, 2, 3.4], [STEAM, 16, 7, 3, 1.6], [CHARGED, 30, 23, 4, 1.4], [FIRE, 33, 7, 2, 1.4], [ICE, 44, 8, 2, 2.6], [STORM, 14, 20, 1.8, 1.4], [CLOUD, 24, 3.4, 3, 1.2], [EARTH, 36, 15, 1.4, 1.8], [WATER, 24, 24, 3, 1.4]]);
+  decorate(game, [[ICE, 6, 5, 3.4, 2.2], [WATER, 40, 29, 5, 2.4], [CLOUD, 38, 4, 3.4, 1.6], [EARTH, 8, 29, 2.4, 2.4], [MAGNET, 43, 16, 1.8, 1.6], [LAVA, 20, 31, 4, 1.3], [LAVA, 6, 16, 2, 3.4], [STEAM, 16, 8, 3, 1.6], [CHARGED, 30, 27, 4, 1.4], [FIRE, 33, 8, 2, 1.4], [ICE, 44, 9, 2, 2.6], [STORM, 14, 24, 1.8, 1.4], [CLOUD, 24, 4, 3, 1.2], [EARTH, 36, 18, 1.4, 1.8], [WATER, 24, 28, 3, 1.4], [ICE, 10, 22, 2.4, 1.6], [LAVA, 42, 22, 2, 1.4]]);
   game.rift.next = game.rift.spawns.length;
   for (const c of game.creatures) damageCreature(game, c, 1e6, 'none');
   advance(game, bot, 6, (g) => g.phase === 'boon', true);

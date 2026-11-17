@@ -62,6 +62,7 @@ export function addText(fx, x, y, text, options = {}) {
     max: options.life ?? 1.1,
     vy: options.vy ?? -38,
     pop: options.pop ?? 0,
+    angle: options.angle ?? 0,
   });
   if (fx.texts.length > 40) fx.texts.shift();
 }
@@ -190,9 +191,13 @@ export function drawTexts(ctx, fx) {
     ctx.font = `900 ${size}px ${FONT}`;
     ctx.lineWidth = Math.max(3, size / 5);
     ctx.strokeStyle = '#05060a';
-    ctx.strokeText(t.text, t.x, t.y);
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.angle);
+    ctx.strokeText(t.text, 0, 0);
     ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y);
+    ctx.fillText(t.text, 0, 0);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }

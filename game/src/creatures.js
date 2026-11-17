@@ -325,7 +325,7 @@ export function drawCreatures(ctx, game, time) {
     const kind = KINDS[c.kind];
     const px = toScreenX(c.x);
     const py = toScreenY(c.y);
-    drawCreatureSprite(ctx, c.kind, px, py, kind.boss ? kind.r * CELL : kind.r * CELL * 1.55, time + c.id, c);
+    drawCreatureSprite(ctx, c.kind, px, py, kind.boss ? kind.r * CELL * 0.83 : kind.r * CELL * 1.55, time + c.id, c);
     if (c.hp < c.maxHp && !kind.boss) {
       const w = Math.max(22, kind.r * CELL * 2.6);
       const top = py - kind.r * CELL * 1.55 - 12;

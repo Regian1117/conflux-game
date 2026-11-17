@@ -8,7 +8,7 @@ import { createInput } from './input.js';
 import { beginNextPrep, callRift, createGame, selectBrush, setCursor, updateGame } from './game.js';
 import { drawBattlefield } from './render.js';
 import { brushCardAt, drawHud } from './hud.js';
-import { boonCardAt, drawBoonPick, drawEnd, drawHelp, drawPause, drawTitle } from './screens.js';
+import { OVERLAY_OFFSET, boonCardAt, drawBoonPick, drawEnd, drawHelp, drawPause, drawTitle } from './screens.js';
 import { takeBoon } from './boons.js';
 import { createBot, botStep } from './autopilot.js';
 import { isMuted, sfx, toggleMute, unlockAudio, updateMusic } from './audio.js';
@@ -57,10 +57,13 @@ function paint(game, screen, bests, time, hover) {
   ctx.fillRect(0, 0, W, H);
   drawBattlefield(ctx, game, time);
   drawHud(ctx, game, bests, time);
+  ctx.save();
+  ctx.translate(0, OVERLAY_OFFSET);
   if (screen === 'title') drawTitle(ctx, time);
   else if (screen === 'help') drawHelp(ctx, time);
-  else if (screen === 'boon') drawBoonPick(ctx, game, hover, time);
   else if (screen === 'pause') drawPause(ctx);
+  ctx.restore();
+  if (screen === 'boon') drawBoonPick(ctx, game, hover, time);
   else if (screen === 'win') drawEnd(ctx, game, bests, true, time);
   else if (screen === 'lose') drawEnd(ctx, game, bests, false, time);
 }

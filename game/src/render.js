@@ -94,6 +94,37 @@ function drawGates(ctx, game, time) {
   }
 }
 
+/** The shield ring round the Core: whole when full, broken into arcs with crack marks as it drains. */
+function drawShieldRing(ctx, fraction, time) {
+  const rx = CELL * 2.5;
+  const ry = CELL * 2.9;
+  const pieces = 14;
+  ctx.lineCap = 'round';
+  for (let k = 0; k < pieces; k += 1) {
+    if (hash(k, 4) > fraction + 0.25) continue;
+    const a0 = (k / pieces) * 6.283 + 0.04;
+    ctx.strokeStyle = `rgba(150,240,255,${0.55 + Math.sin(time * 6 + k) * 0.2})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, -8, rx, ry, 0, a0, a0 + 6.283 / pieces - 0.1);
+    ctx.stroke();
+  }
+  if (fraction < 0.6) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1.5;
+    for (let k = 0; k < 5; k += 1) {
+      const a = hash(k, 9) * 6.283;
+      const x = Math.cos(a) * rx;
+      const y = -8 + Math.sin(a) * ry;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - Math.cos(a) * 9 + 4, y - Math.sin(a) * 9 - 3);
+      ctx.lineTo(x - Math.cos(a) * 16 - 3, y - Math.sin(a) * 16 + 2);
+      ctx.stroke();
+    }
+  }
+}
+
 /** The Core Crystal: a tall faceted crystal on a rune platform, with slowly turning light rays. */
 function drawCore(ctx, game, time) {
   const x = toScreenX(CORE.col + 0.5);
@@ -161,13 +192,7 @@ function drawCore(ctx, game, time) {
     ctx.fillStyle = '#c8fbff';
     ctx.fillRect(Math.cos(a) * 34 - 2, -16 + Math.sin(a) * 12 - 2, 4, 4);
   }
-  if (game.core.shield > 0) {
-    ctx.strokeStyle = `rgba(120,230,255,${0.45 + Math.sin(time * 6) * 0.15})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, -8, CELL * 2.3, CELL * 2.6, 0, 0, 6.283);
-    ctx.stroke();
-  }
+  if (game.core.shield > 0) drawShieldRing(ctx, game.core.shield / Math.max(40, game.mods.shieldMax), time);
   ctx.restore();
 }
 
