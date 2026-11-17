@@ -220,11 +220,6 @@ function registerReactions(game, events) {
     const half = (`CHAIN x${chain.count} - ${top}!`.length * Math.min(58, 24 + chain.count * 2.6) * 0.4) + 12;
     addText(game.fx, Math.min(FIELD.x + FIELD.w - half, Math.max(FIELD.x + half, px)), Math.max(FIELD.y + 60, py), `CHAIN x${chain.count} - ${top}!`, { color, size: Math.min(58, 24 + chain.count * 2.6), life: 1.5, pop: 0.5 });
     sfx.chain(chain.count);
-    if (chain.count >= 5) {
-      game.cam.hold = 3.5;
-      game.cam.fx = px;
-      game.cam.fy = py + 30;
-    }
     if (chain.count >= 6) addShake(game.fx, Math.min(9, chain.count * 0.7));
     if (chain.count % 10 === 0) addFlash(game.fx, 0.25, color);
   } else if (gain > 0 && (wasZero || game.t - chain.lastText > 1.2)) {

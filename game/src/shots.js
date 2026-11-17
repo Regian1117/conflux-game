@@ -44,7 +44,7 @@ function blob(game, type, cx, cy, rx, ry, density = 1) {
       const dx = (col + 0.5 - cx) / rx;
       const dy = (row + 0.5 - cy) / ry;
       if (dx * dx + dy * dy > 1 || col < 1 || row < 1 || col > COLS - 2 || row > ROWS - 2) continue;
-      if (Math.abs(col - 25) <= 1 && Math.abs(row - 15) <= 1) continue;
+      if (Math.abs(col - 25) <= 1 && Math.abs(row - 14) <= 1) continue;
       if (game.rng.chance(density)) setCell(game.grid, col, row, type, 1.8);
     }
   }
@@ -107,23 +107,25 @@ function stageCover(seed) {
   advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
   const boss = game.boss;
   const BOSS_X = 38.5;
-  const BOSS_Y = 12.4;
+  const BOSS_Y = 11;
   game.grid.type.fill(0);
   game.creatures = game.creatures.filter((c) => c === boss);
-  // West (kept inside the zoomed view): a smooth lava river between earth walls, a pond and steam.
-  river(game, LAVA, 12, 2, 12.5, 27, 4.4, 2.6);
-  river(game, EARTH, 8.5, 2, 9, 27, 1.9, 1.2);
-  river(game, EARTH, 16.2, 2, 16.5, 20, 1.9, 1.2);
-  blob(game, WATER, 18, 25, 3.4, 2.1);
-  blob(game, STEAM, 16.5, 22.5, 3.6, 2);
+  // West: a smooth lava river between earth walls, steam where it meets a pond.
+  river(game, LAVA, 8.5, 1, 9, 25, 4.4, 2.6);
+  river(game, EARTH, 4.5, 1, 5, 26, 1.9, 1.2);
+  river(game, EARTH, 12.7, 1, 13, 19, 1.9, 1.2);
+  blob(game, WATER, 14, 24, 3.6, 2.2);
+  blob(game, STEAM, 12.5, 21.5, 3.8, 2);
+  blob(game, STEAM, 16, 23, 2.4, 1.4);
+  blob(game, MAGNET, 19.5, 19.5, 1.7, 1.1);
   // Middle right: the storm cloud, and the pool under it: shocked to the left of the brush, still water to its right.
-  blob(game, CLOUD, 38, 3.4, 7.5, 1.8);
-  blob(game, CLOUD, 30.5, 4.4, 2.8, 1.4);
-  blob(game, CLOUD, 45.5, 4.5, 3, 1.5);
-  blob(game, WATER, 38.5, 20.2, 10, 2.4);
-  for (let col = 0; col < 38; col += 1) for (let row = 14; row < 26; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
+  blob(game, CLOUD, 38, 3.3, 7.5, 1.8);
+  blob(game, CLOUD, 30.5, 4.3, 2.8, 1.4);
+  blob(game, CLOUD, 45.5, 4.4, 3, 1.5);
+  blob(game, WATER, 38.5, 19.4, 10, 2.4);
+  for (let col = 0; col < 44; col += 1) for (let row = 14; row < 24; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
   // Lower right: the small ice patch with three frozen creatures.
-  blob(game, ICE, 45, 26.5, 4.2, 2.5);
+  blob(game, ICE, 44.5, 25.3, 4.4, 2.7);
   if (boss) {
     boss.x = BOSS_X;
     boss.y = BOSS_Y;
@@ -132,17 +134,17 @@ function stageCover(seed) {
     c.steamed = 0;
     c.wet = 0;
   }
-  for (const [kind, x, y] of [['golem', 43, 26.6], ['wraith', 46.4, 27], ['imp', 44.8, 25]]) place(game, kind, 'E', x, y).frozen = 99;
-  // Converging from the west (an imp burning in the lava, a golem and swarm), the north (wraiths) and the south (ram, beetle).
-  place(game, 'imp', 'W', 12, 12);
-  place(game, 'golem', 'W', 19.5, 15.4);
-  for (const [x, y] of [[21.8, 13.6], [22.6, 16.4], [20.4, 17.4]]) place(game, 'swarm', 'W', x, y);
-  place(game, 'wraith', 'N', 23.4, 7);
-  place(game, 'wraith', 'N', 28.4, 8.4);
-  place(game, 'ram', 'S', 24.4, 23);
-  place(game, 'beetle', 'S', 28.6, 25.4);
+  for (const [kind, x, y] of [['golem', 42.4, 25.4], ['wraith', 46, 26], ['imp', 44.4, 23.9]]) place(game, kind, 'E', x, y).frozen = 99;
+  // Converging: from the west (an imp burning in the lava, a golem and swarm), the north (wraiths) and the south (ram, beetle).
+  place(game, 'imp', 'W', 8.8, 11);
+  place(game, 'golem', 'W', 15.2, 14.2);
+  for (const [x, y] of [[17.6, 12.8], [18.8, 14.9], [16.8, 16.2]]) place(game, 'swarm', 'W', x, y);
+  place(game, 'wraith', 'N', 22.4, 6.2);
+  place(game, 'wraith', 'N', 28.2, 7.6);
+  place(game, 'ram', 'S', 24, 22.4);
+  place(game, 'beetle', 'S', 28.4, 25);
   // The chain: seven creatures across the pool, each hit in turn.
-  const links = [['imp', 30.4, 19.7], ['wraith', 33.2, 21.3], ['beetle', 35.9, 19.7], ['golem', 38.6, 21.3], ['swarm', 41.3, 19.7], ['ram', 44, 21.3], ['imp', 47.2, 19.7]];
+  const links = [['imp', 30.4, 18.7], ['wraith', 33.2, 20.3], ['beetle', 35.9, 18.7], ['golem', 38.6, 20.3], ['swarm', 41.3, 18.7], ['ram', 44, 20.3], ['imp', 47.2, 18.7]];
   const chain = links.map(([kind, x, y]) => place(game, kind, 'E', x, y));
   game.core.hp = 74;
   game.core.shield = 7;
@@ -158,8 +160,8 @@ function stageCover(seed) {
   }
   computeFlow(game.flow, game.grid);
   game.fx.parts.length = 0;
-  burst(game.fx, 'zap', toScreenX(16.5), toScreenY(22.5), 14, ['#ffe9a8', '#ffffff']);
-  burst(game.fx, 'spark', toScreenX(18), toScreenY(24), 8);
+  burst(game.fx, 'zap', toScreenX(12.5), toScreenY(21.5), 14, ['#ffe9a8', '#ffffff']);
+  burst(game.fx, 'spark', toScreenX(16), toScreenY(23), 8);
   // One callout: the chain lands through the game's own reaction path, then is placed above the storm.
   game.fx.texts.length = 0;
   game.tip = null;
@@ -171,21 +173,21 @@ function stageCover(seed) {
   game.chain.lastGain = -9;
   game.chain.kinds.clear();
   ['STEAM', 'SHOCK', 'QUENCH', 'STRIKE', 'MELT', 'MAGNET', 'FROST', 'SHATTER'].forEach((n) => game.chain.kinds.add(n));
-  reactNow(game, [{ name: 'STORMSTEAM', x: 16.5, y: 22.5 }, { name: 'LAVA', x: 14.5, y: 22.5 }]);
+  reactNow(game, [{ name: 'STORMSTEAM', x: 12.5, y: 21.5 }, { name: 'LAVA', x: 10.5, y: 21.5 }]);
   game.fx.bolts.length = 0;
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
-    callout.x = 520;
-    callout.y = 96;
-    callout.size = 30;
+    callout.x = 735;
+    callout.y = 104;
+    callout.size = 32;
     callout.angle = -0.03;
     callout.life = callout.max = 3;
     callout.vy = 0;
   }
   // The storm: three thick forked bolts out of the cloud, onto the Colossus's shoulder, the pool and the ground by the Core.
-  forkedBolt(game, 820, 66, 872, 176);
-  forkedBolt(game, 950, 70, 944, 360);
-  forkedBolt(game, 650, 68, 600, 250);
+  forkedBolt(game, 800, 128, 872, 232);
+  forkedBolt(game, 940, 130, 952, 430);
+  forkedBolt(game, 660, 128, 606, 318);
   // The chain itself, link by link, with a numbered spark at each hit.
   chain.forEach((c, i) => {
     const x = toScreenX(c.x);
@@ -199,13 +201,10 @@ function stageCover(seed) {
   for (let n = 0; n < 4; n += 1) updateFx(game.fx, STEP);
   // The player, mid-stroke: a fresh STORM stroke across the pool behind the brush.
   game.brush = 3;
-  game.cursor = { x: 38.8, y: 21.6, down: true, inField: true, lastX: 38.8, lastY: 21.6, trail: [] };
-  for (let i = 0; i <= 15; i += 1) game.cursor.trail.push({ x: 24 + i * 0.99, y: 21.8 + Math.sin(i * 0.8) * 0.2, age: (15 - i) * 0.028, brush: 3 });
+  game.cursor = { x: 44.6, y: 20.4, down: true, inField: true, lastX: 44.6, lastY: 20.4, trail: [] };
+  for (let i = 0; i <= 15; i += 1) game.cursor.trail.push({ x: 29.8 + i * 0.99, y: 20.5 + Math.sin(i * 0.8) * 0.2, age: (15 - i) * 0.028, brush: 3 });
   game.showAllTags = true;
-  game.tagTypes = [LAVA, CHARGED];
   game.showHowTo = true;
-  // The climax camera, eased in toward the Colossus, the storm strike, the pool and the Core.
-  game.cam = { zoom: 1.25, cx: 580, cy: 255, hold: 3, fx: 580, fy: 255 };
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }
 

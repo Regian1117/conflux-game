@@ -2,7 +2,7 @@
 // line) and, during the boss fight, the Colossus's health and plate order; Core health at the
 // right. Right panel: score, the threat queue with behaviour notes, and the boons held. Bottom: the
 // spell bar, with the four element slots, the chain and reaction-grade badge and the control keys.
-import { CELL, COLS, CORE, FIELD, GATES, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, VIEW_SCALE, W } from './config.js';
+import { CORE, FIELD, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, W } from './config.js';
 import { BRUSHES, ELEMENTS } from './elements.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
@@ -83,7 +83,7 @@ function drawQueue(ctx, game, time, x0, w) {
 
 /** The Colossus's health and plate order, in the top bar beside the rift counter. */
 function drawBossPanel(ctx, boss, time, x, w) {
-  drawPanel(ctx, x, 8, w, 68, { fill: 'rgba(10,6,20,0.7)', edge: 'rgba(166,92,255,0.8)' });
+  drawPanel(ctx, x, 8, w, 68, { fill: 'rgba(10,6,20,0.92)', edge: '#a65cff' });
   drawText(ctx, 'HOLLOW COLOSSUS', x + 12, 28, { size: 16, color: '#c58aff' });
   drawBar(ctx, x + 170, 13, w - 182, 14, boss.hp / boss.maxHp, '#c0486a');
   if (boss.exposed > 0) drawText(ctx, `EXPOSED! ${Math.ceil(boss.exposed)}s`, x + 170 + (w - 182) / 2, 25, { size: 15, color: '#ffe9a8', align: 'center' });
@@ -130,8 +130,8 @@ function drawBrushSlots(ctx, game, time) {
       ctx.shadowBlur = 18;
     }
     const body = ctx.createLinearGradient(0, c.y, 0, c.y + c.h);
-    body.addColorStop(0, selected ? 'rgba(35,44,68,0.8)' : 'rgba(22,27,43,0.66)');
-    body.addColorStop(1, 'rgba(10,13,22,0.72)');
+    body.addColorStop(0, selected ? '#232c44' : '#161b2b');
+    body.addColorStop(1, '#0a0d16');
     ctx.beginPath();
     ctx.roundRect(c.x, c.y, c.w, c.h, 12);
     ctx.fillStyle = body;
@@ -188,89 +188,25 @@ function drawComboBadge(ctx, game) {
   if (count > 0) drawBar(ctx, x + 12, BAR_Y + 92, w - 24, 6, game.chain.timer / REACT.chainWindow, color);
 }
 
-/** MiniMap colours of the painted areas. */
-const MINI = { 1: '#ff6a2a', 2: '#2ec8ff', 3: '#a98a52', 4: '#ffe23a', 5: '#dff3fb', 6: '#ff6a1a', 7: '#5ff0ff', 8: '#dff6ff', 9: '#ff7a9a', 10: '#8fa0e0' };
-
-/** A small round minimap: rifts, the Core, painted areas as colour patches, creatures as dots, and the camera's view. */
-function drawMinimap(ctx, game) {
-  const cx = 1166;
-  const cy = 744;
-  const r = 48;
-  const k = (2 * r * 0.97) / FIELD.w;
-  const ox = cx - (FIELD.w * k) / 2;
-  const oy = cy - (FIELD.h * k) / 2;
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, 6.283);
-  ctx.fillStyle = 'rgba(6,8,14,0.72)';
-  ctx.fill();
-  ctx.clip();
-  ctx.fillStyle = 'rgba(30,36,56,0.9)';
-  ctx.fillRect(ox, oy, FIELD.w * k, FIELD.h * k);
-  const grid = game.grid;
-  for (let i = 0; i < grid.type.length; i += 1) {
-    if (grid.type[i] === 0) continue;
-    ctx.fillStyle = MINI[grid.type[i]];
-    ctx.fillRect(ox + (i % COLS) * CELL * k, oy + Math.floor(i / COLS) * CELL * k, 2.3, 2.3);
-  }
-  ctx.fillStyle = '#b070ff';
-  for (const gate of Object.values(GATES)) {
-    ctx.beginPath();
-    ctx.arc(ox + (gate.col + 0.5) * CELL * k, oy + (gate.row + 0.5) * CELL * k, 3, 0, 6.283);
-    ctx.fill();
-  }
-  for (const c of game.creatures) {
-    if (c.dead) continue;
-    ctx.fillStyle = c.kind === 'colossus' ? '#ff9a3a' : '#ff5a5a';
-    ctx.beginPath();
-    ctx.arc(ox + c.x * CELL * k, oy + c.y * CELL * k, c.kind === 'colossus' ? 4 : 1.8, 0, 6.283);
-    ctx.fill();
-  }
-  ctx.fillStyle = '#ffe6a8';
-  ctx.beginPath();
-  ctx.arc(ox + (CORE.col + 0.5) * CELL * k, oy + (CORE.row + 0.5) * CELL * k, 3.6, 0, 6.283);
-  ctx.fill();
-  if (game.cam.zoom > 1.02) {
-    const w = (W / (VIEW_SCALE * game.cam.zoom)) * k;
-    const h = (H / (VIEW_SCALE * game.cam.zoom)) * k;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(ox + game.cam.cx * k - w / 2, oy + game.cam.cy * k - h / 2, w, h);
-  }
-  ctx.restore();
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = 'rgba(212,170,85,0.9)';
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, 6.283);
-  ctx.stroke();
-}
-
-/** The control keys, a slim row at the left end of the how-to ribbon's line. */
-function drawControlKeys(ctx) {
-  let x = 12;
-  const y = BAR_Y - 38;
-  const key = (label, text, w = 24) => {
-    x = keycap(ctx, label, x, y, w);
-    drawText(ctx, text, x + 1, y + 21, { size: 12, color: '#dfe7ff', weight: 700, outline: 2 });
-    x += ctx.measureText(text).width + 10;
-  };
-  key('SPACE', 'rift', 54);
-  key('P', 'pause');
-  key('M', isMuted() ? 'unmute' : 'mute');
-  key('R', 'retry');
-}
-
-/** The bottom spell bar: element slots, the chain badge and the minimap, floating over the picture. */
+/** The bottom spell bar: element slots, chain badge and the compact control keys. */
 export function drawToolBar(ctx, game, time) {
-  const fade = ctx.createLinearGradient(0, BAR_Y - 40, 0, H);
-  fade.addColorStop(0, 'rgba(4,5,9,0)');
-  fade.addColorStop(1, 'rgba(4,5,9,0.62)');
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, BAR_Y - 40, W, H - BAR_Y + 40);
+  ctx.fillStyle = 'rgba(5,6,10,0.9)';
+  ctx.fillRect(0, BAR_Y - 6, W, H - BAR_Y + 6);
   drawBrushSlots(ctx, game, time);
   drawComboBadge(ctx, game);
-  drawControlKeys(ctx);
-  drawMinimap(ctx, game);
+  let x = 1052;
+  const y = BAR_Y + 10;
+  x = keycap(ctx, 'SPACE', x, y, 66);
+  drawText(ctx, 'open rift', x + 2, y + 22, { size: 13, color: '#dfe7ff', weight: 700, outline: 0 });
+  x = 1052;
+  const small = (key, label) => {
+    x = keycap(ctx, key, x, y + 48, 28);
+    drawText(ctx, label, x + 1, y + 70, { size: 12, color: '#dfe7ff', weight: 700, outline: 0 });
+    x += ctx.measureText(label).width + 10;
+  };
+  small('P', 'pause');
+  small('M', isMuted() ? 'unmute' : 'mute');
+  small('R', 'restart');
 }
 
 function drawScoreBlock(ctx, game, bests) {
@@ -302,7 +238,7 @@ function drawThreatQueue(ctx, game) {
   const y = 192;
   const h = 312;
   const number = Math.min(RIFT_COUNT, game.phase === 'prep' ? game.riftNum + 1 : Math.max(1, game.riftNum));
-  drawPanel(ctx, PANEL_X, y, PANEL_W, h, { edge: 'rgba(212,170,85,0.7)' });
+  drawPanel(ctx, PANEL_X, y, PANEL_W, h, { edge: '#d4aa55', lineWidth: 3 });
   drawText(ctx, `THREAT QUEUE \u00b7 RIFT ${number}`, PANEL_X + PANEL_W / 2, y + 22, { size: 15, color: '#ffd24a', align: 'center' });
   const rows = incomingSummary(game, 6);
   if (rows.length === 0) drawText(ctx, game.phase === 'rift' ? 'all creatures are out' : 'rift cleared', PANEL_X + PANEL_W / 2, y + 100, { size: 15, color: P.muted, align: 'center', outline: 0 });
@@ -330,17 +266,16 @@ function drawThreatQueue(ctx, game) {
 
 /** The boons held, as glyph icons with their names. */
 function drawBoonList(ctx, game) {
-  const x = 12;
-  const y = 146;
+  const y = 512;
+  const h = 172;
+  drawPanel(ctx, PANEL_X, y, PANEL_W, h);
+  drawText(ctx, 'BOONS HELD', PANEL_X + 12, y + 20, { size: 13, color: P.muted, outline: 0 });
   const held = BOONS.filter((b) => game.boons[b.id]);
-  const h = 34 + Math.max(1, Math.min(6, held.length)) * 22;
-  drawPanel(ctx, x, y, 214, h);
-  drawText(ctx, 'BOONS HELD', x + 12, y + 20, { size: 13, color: P.muted, outline: 0 });
-  if (held.length === 0) drawText(ctx, 'pick 1 of 3 per rift', x + 12, y + 50, { size: 12, color: P.muted, weight: 700, outline: 0 });
+  if (held.length === 0) drawText(ctx, 'pick 1 of 3 after each rift', PANEL_X + 12, y + 50, { size: 12, color: P.muted, weight: 700, outline: 0 });
   held.slice(0, 6).forEach((b, i) => {
     const row = y + 34 + i * 22;
-    drawGlyphTile(ctx, b.glyph, x + 22, row + 9, 20, b.color);
-    drawText(ctx, `${b.name}${game.boons[b.id] > 1 ? ` x${game.boons[b.id]}` : ''}`, x + 38, row + 14, { size: 13, color: '#ffffff', outline: 2 });
+    drawGlyphTile(ctx, b.glyph, PANEL_X + 22, row + 9, 20, b.color);
+    drawText(ctx, `${b.name}${game.boons[b.id] > 1 ? ` x${game.boons[b.id]}` : ''}`, PANEL_X + 38, row + 14, { size: 13, color: '#ffffff', outline: 2 });
   });
 }
 
@@ -349,17 +284,17 @@ function drawHowTo(ctx, game) {
   if (!game.showHowTo && !(game.phase === 'prep' && game.riftNum === 0)) return;
   const text = 'Paint WATER, then STORM on it: the shock chains through every creature in the pool';
   ctx.font = '800 100px sans-serif';
-  const size = Math.min(16, (600 / ctx.measureText(text).width) * 100);
+  const size = Math.min(17, ((FIELD.w - 80) / ctx.measureText(text).width) * 100);
   ctx.font = `800 ${size}px sans-serif`;
   const w = ctx.measureText(text).width + 34;
-  const x = (W - w) / 2;
-  const y = BAR_Y - 36;
+  const x = FIELD.x + (FIELD.w - w) / 2;
+  const y = FIELD.y + FIELD.h - 36;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, 28, 14);
-  ctx.fillStyle = 'rgba(4,5,8,0.66)';
+  ctx.roundRect(x, y, w, 28, 8);
+  ctx.fillStyle = 'rgba(4,5,8,0.92)';
   ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(212,170,85,0.7)';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d4aa55';
   ctx.stroke();
   drawText(ctx, text, x + w / 2, y + 20, { size, color: '#ffffff', align: 'center', weight: 800, outline: 2 });
 }
@@ -367,24 +302,24 @@ function drawHowTo(ctx, game) {
 function drawTip(ctx, game) {
   if (!game.tip) return;
   const a = Math.min(1, game.tip.timer);
-  const x = W / 2 - 350;
+  const x = FIELD.x + FIELD.w - 700 - 8;
   ctx.globalAlpha = a;
-  drawPanel(ctx, x, 94, 700, 36, { fill: 'rgba(8,10,16,0.72)', edge: '#ffd24a' });
-  drawCreatureSprite(ctx, game.tip.kind, x + 28, 112, 10, 0, {});
-  drawText(ctx, game.tip.text, x + 350, 119, { size: 15, color: '#ffe9a8', align: 'center' });
+  drawPanel(ctx, x, FIELD.y + 8, 700, 36, { fill: 'rgba(8,10,16,0.88)', edge: '#ffd24a' });
+  drawCreatureSprite(ctx, game.tip.kind, x + 28, FIELD.y + 26, 10, 0, {});
+  drawText(ctx, game.tip.text, x + 350, FIELD.y + 33, { size: 15, color: '#ffe9a8', align: 'center' });
   ctx.globalAlpha = 1;
 }
 
 /** The goal banner under the rift counter: how to win (green) and how to lose (red). */
 function drawGoalBanner(ctx) {
-  const x = 12;
-  const y = 84;
+  const x = FIELD.x + 4;
+  const y = FIELD.y + 4;
   ctx.beginPath();
   ctx.roundRect(x, y, 372, 54, 8);
-  ctx.fillStyle = 'rgba(4,5,8,0.66)';
+  ctx.fillStyle = 'rgba(4,5,8,0.93)';
   ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(212,170,85,0.7)';
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#d4aa55';
   ctx.stroke();
   drawText(ctx, 'WIN: seal 7 rifts + slay the Colossus', x + 186, y + 23, { size: 19, color: P.good, align: 'center', weight: 900, outline: 3 });
   drawText(ctx, 'LOSE: the Core shatters', x + 186, y + 46, { size: 19, color: '#ff5a6a', align: 'center', weight: 900, outline: 3 });
@@ -440,8 +375,10 @@ export function drawKeyBar(ctx) {
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
   drawRiftBlock(ctx, game);
-  if (game.boss) drawBossPanel(ctx, game.boss, time, 400, 480);
-  else drawQueue(ctx, game, time, 400, 480);
+  if (game.boss) {
+    drawBossPanel(ctx, game.boss, time, MID_X, 480);
+    drawQueue(ctx, game, time, 726, MID_X + MID_W - 726);
+  } else drawQueue(ctx, game, time, MID_X, MID_W);
   drawCoreBlock(ctx, game);
   drawScoreBlock(ctx, game, bests);
   drawThreatQueue(ctx, game);
@@ -450,4 +387,5 @@ export function drawHud(ctx, game, bests, time) {
   drawHowTo(ctx, game);
   drawToolBar(ctx, game, time);
   drawTip(ctx, game);
+  drawFrames(ctx, game);
 }

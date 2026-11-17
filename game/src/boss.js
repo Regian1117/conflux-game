@@ -25,9 +25,6 @@ export function spawnColossus(game, gateKey) {
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 226, 'Break its plates in order', { color: '#ffffff', size: 26, life: 2.6, vy: -8 });
   addShake(game.fx, 12);
   addFlash(game.fx, 0.5, '#a65cff');
-  game.cam.hold = 5;
-  game.cam.fx = toScreenX(boss.x);
-  game.cam.fy = toScreenY(boss.y) + 40;
   sfx.riftOpen();
   return boss;
 }
