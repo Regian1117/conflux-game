@@ -101,12 +101,13 @@ export function drawLabels(ctx, game) {
   placed.length = 0;
   // The boss and the Core first, so the area tags make way for them.
   const boss = game.boss;
-  if (boss) chip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
+  if (boss && !game.coverTags) chip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
   const coreX = CORE.col + 0.5;
   const coreY = CORE.row + 0.5;
   const nearCore = hover && Math.hypot(hover.x - coreX, hover.y - coreY) < 4;
-  if (game.showAllTags || game.t < 10 || nearCore) chip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, `CORE ${Math.ceil(game.core.hp)}/100`, 'defend it', '#ffe3a0');
+  if (game.showAllTags || game.t < 10 || nearCore) chip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, 'CORE', 'defend', '#ffe3a0');
   for (const area of areas(game)) {
+    if (game.coverTags && !game.coverTags.includes(area.type)) continue;
     first[area.type] ??= game.t;
     const fresh = game.t - first[area.type] < 4.5;
     const hovered = hover && hover.x >= area.minCol - 1.5 && hover.x <= area.maxCol + 2.5 && hover.y >= area.minRow - 1.5 && hover.y <= area.maxRow + 2.5;

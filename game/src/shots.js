@@ -107,7 +107,7 @@ function stageCover(seed) {
   advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
   const boss = game.boss;
   const BOSS_X = 38.5;
-  const BOSS_Y = 11;
+  const BOSS_Y = 12.2;
   game.grid.type.fill(0);
   game.creatures = game.creatures.filter((c) => c === boss);
   // West: a smooth lava river between earth walls, steam where it meets a pond.
@@ -177,9 +177,9 @@ function stageCover(seed) {
   game.fx.bolts.length = 0;
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
-    callout.x = 735;
-    callout.y = 104;
-    callout.size = 32;
+    callout.x = 650;
+    callout.y = 112;
+    callout.size = 26;
     callout.angle = -0.03;
     callout.life = callout.max = 3;
     callout.vy = 0;
@@ -204,6 +204,8 @@ function stageCover(seed) {
   game.cursor = { x: 44.6, y: 20.4, down: true, inField: true, lastX: 44.6, lastY: 20.4, trail: [] };
   for (let i = 0; i <= 15; i += 1) game.cursor.trail.push({ x: 29.8 + i * 0.99, y: 20.5 + Math.sin(i * 0.8) * 0.2, age: (15 - i) * 0.028, brush: 3 });
   game.showAllTags = true;
+  game.coverTags = [LAVA, CHARGED, ICE, STEAM];
+  game.focusLine = [[toScreenX(38.5), toScreenY(8)], [toScreenX(39), toScreenY(12.6)], [toScreenX(41), toScreenY(19.6)], [toScreenX(33), toScreenY(20.2)], [toScreenX(25.5), toScreenY(14.4)]];
   game.showHowTo = true;
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }
