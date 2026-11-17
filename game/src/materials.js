@@ -85,7 +85,7 @@ function newCanvas() {
 function maskFor(type, cells, time) {
   let entry = masks.get(type);
   if (!entry) {
-    entry = { sig: '', builtAt: -9, mask: newCanvas(), outline: newCanvas(), rim: newCanvas() };
+    entry = { sig: '', builtAt: -9, mask: newCanvas(), outline: newCanvas(), rim: newCanvas(), shade: newCanvas() };
     masks.set(type, entry);
   }
   let hashed = 0;
@@ -148,6 +148,17 @@ function maskFor(type, cells, time) {
   r.fillStyle = RIMS[type];
   r.fillRect(0, 0, FIELD.w, FIELD.h);
   r.globalCompositeOperation = 'source-over';
+  // Shadow side: the silhouette minus itself shifted up-left leaves the bottom-right edge.
+  const sh = entry.shade.getContext('2d');
+  sh.globalCompositeOperation = 'source-over';
+  sh.clearRect(0, 0, FIELD.w, FIELD.h);
+  sh.drawImage(entry.mask, 0, 0);
+  sh.globalCompositeOperation = 'destination-out';
+  sh.drawImage(entry.mask, -3, -3);
+  sh.globalCompositeOperation = 'source-in';
+  sh.fillStyle = '#02030a';
+  sh.fillRect(0, 0, FIELD.w, FIELD.h);
+  sh.globalCompositeOperation = 'source-over';
   return entry;
 }
 
@@ -156,6 +167,97 @@ const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARG
 const RIMS = { [FIRE]: '#ffd24a', [LAVA]: '#ff8a2a', [WATER]: '#bff2ff', [CHARGED]: '#ffffff', [ICE]: '#ffffff', [EARTH]: '#b09258', [STORM]: '#ffe23a', [MAGNET]: '#c9ccd8', [CLOUD]: '#b9a8ff' };
 
 /** Per-element detail painting, in layer coordinates, clipped to the blob by source-atop. */
+/** Extra surface detail drawn on top of DETAILS (clipped to the blob afterwards). */
+const EXTRAS = {
+  [LAVA](g, cells, t) {
+    g.globalCompositeOperation = 'lighter';
+    for (const i of cells) {
+      const x = (i % COLS) * CELL;
+      const y = Math.floor(i / COLS) * CELL;
+      const h = hash(i, 8);
+      g.fillStyle = `rgba(255,150,40,${0.1 + 0.07 * Math.sin(t * 2.4 + h * 9)})`;
+      g.beginPath();
+      g.arc(x + 10 + Math.sin(t * 0.9 + h * 7) * 4, y + 10 + Math.cos(t * 0.8 + h * 5) * 4, 7, 0, TAU);
+      g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+  },
+  [WATER](g, cells, t) {
+    waterExtras(g, cells, t, 'rgba(235,250,255,');
+  },
+  [CHARGED](g, cells, t) {
+    waterExtras(g, cells, t, 'rgba(210,255,255,');
+  },
+  [ICE](g, cells, t) {
+    for (const i of cells) {
+      const h = hash(i, 11);
+      if (h < 0.55) continue;
+      const x = (i % COLS) * CELL + 4 + hash(i, 12) * 12;
+      const y = Math.floor(i / COLS) * CELL + 4 + hash(i, 13) * 12;
+      const glint = Math.max(0, Math.sin(t * 2.2 + h * 20)) ** 5;
+      if (glint < 0.05) continue;
+      g.strokeStyle = `rgba(255,255,255,${glint})`;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(x - 5 * glint - 1, y);
+      g.lineTo(x + 5 * glint + 1, y);
+      g.moveTo(x, y - 5 * glint - 1);
+      g.lineTo(x, y + 5 * glint + 1);
+      g.stroke();
+    }
+  },
+  [MAGNET](g, cells, t) {
+    for (const i of cells) {
+      const x = (i % COLS) * CELL;
+      const y = Math.floor(i / COLS) * CELL;
+      const band = Math.max(0, Math.sin((x + y) * 0.045 - t * 1.6)) ** 6;
+      if (band < 0.03) continue;
+      g.fillStyle = `rgba(230,235,255,${0.32 * band})`;
+      g.fillRect(x, y, CELL, CELL);
+    }
+  },
+  [EARTH](g, cells) {
+    for (const i of cells) {
+      const h = hash(i, 21);
+      if (h < 0.55) continue;
+      const x = (i % COLS) * CELL;
+      const y = Math.floor(i / COLS) * CELL;
+      g.fillStyle = `rgba(${70 + (h * 40) | 0},${120 + (h * 40) | 0},48,0.6)`;
+      g.beginPath();
+      g.ellipse(x + 6 + hash(i, 22) * 8, y + 4 + hash(i, 23) * 4, 5, 2.6, 0, 0, TAU);
+      g.fill();
+    }
+  },
+};
+
+/** Layered caustic ripples and foam on the edge cells of a pool. */
+function waterExtras(g, cells, t, white) {
+  const set = new Set(cells);
+  for (const i of cells) {
+    const x = (i % COLS) * CELL;
+    const y = Math.floor(i / COLS) * CELL;
+    const h = hash(i, 31);
+    g.strokeStyle = `${white}${0.1 + 0.08 * Math.sin(t * 1.7 + h * 9)})`;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(x + 2, y + 6 + Math.sin(t * 1.3 + h * 6) * 2);
+    g.quadraticCurveTo(x + 10, y + 1 + Math.sin(t * 1.9 + h * 4) * 2, x + 18, y + 7);
+    g.moveTo(x + 1, y + 15 + Math.cos(t * 1.5 + h * 3) * 2);
+    g.quadraticCurveTo(x + 9, y + 11, x + 19, y + 16);
+    g.stroke();
+    const col = i % COLS;
+    const edge = !set.has(i - COLS) || !set.has(i + COLS) || (col > 0 && !set.has(i - 1)) || (col < COLS - 1 && !set.has(i + 1));
+    if (edge) {
+      g.fillStyle = `${white}${0.45 + 0.2 * Math.sin(t * 3 + h * 12)})`;
+      for (let k = 0; k < 3; k += 1) {
+        g.beginPath();
+        g.arc(x + 3 + k * 7 + hash(i, 40 + k) * 4, y + (k % 2 ? 3 : 17), 1.6 + hash(i, 50 + k) * 1.4, 0, TAU);
+        g.fill();
+      }
+    }
+  }
+}
+
 const DETAILS = {
   [FIRE](g, cells, t) {
     for (const i of cells) {
@@ -529,6 +631,7 @@ export function drawMaterials(ctx, game, time) {
     g.fillStyle = BASES[type];
     g.fillRect(0, 0, FIELD.w, FIELD.h);
     DETAILS[type](g, cells, time);
+    EXTRAS[type]?.(g, cells, time);
     etchGlyphs(g, grid, type, cells);
     g.globalCompositeOperation = 'destination-in';
     g.drawImage(entry.mask, 0, 0);
@@ -536,6 +639,8 @@ export function drawMaterials(ctx, game, time) {
     ctx.drawImage(layer, FIELD.x, FIELD.y);
     ctx.globalAlpha = 0.9;
     ctx.drawImage(entry.rim, FIELD.x, FIELD.y);
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(entry.shade, FIELD.x, FIELD.y);
     ctx.globalAlpha = 1;
     if (type === ICE) drawIceExtras(ctx, grid, cells, time);
     if (type === MAGNET) drawFieldLines(ctx, cells, time);

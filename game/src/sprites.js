@@ -340,6 +340,69 @@ const painters = { imp: paintImp, golem: paintGolem, wraith: paintWraith, beetle
  * Draw creature `kindId` centred at canvas pixel (x, y) with body radius `r` pixels.
  * `t` is time in seconds for animation; `st` carries flash, frozen, charge, plates, exposed.
  */
+const RIM_COLORS = { imp: '#ffa060', golem: '#ffd890', wraith: '#c8ecff', beetle: '#e0b0ff', swarm: '#ffb868', ram: '#f0e4c8' };
+let finishA = null;
+let finishB = null;
+let finishC = null;
+
+/**
+ * The shared finish for every creature: the painter draws into a scratch canvas, then one light from
+ * the top left shades it (light side, shadow side, a small highlight), an element-coloured rim
+ * catches the lit edge, and a crisp dark outline is stamped around the silhouette.
+ */
+function finished(ctx, kindId, r, draw) {
+  const half = Math.ceil(r * 2.6) + 8;
+  const size = half * 2;
+  if (!finishA) {
+    [finishA, finishB, finishC] = [0, 1, 2].map(() => document.createElement('canvas'));
+    for (const c of [finishA, finishB, finishC]) c.width = c.height = 320;
+  }
+  const a = finishA.getContext('2d');
+  const b = finishB.getContext('2d');
+  const c = finishC.getContext('2d');
+  a.globalCompositeOperation = 'source-over';
+  a.clearRect(0, 0, size, size);
+  a.save();
+  a.translate(half, half);
+  draw(a);
+  a.restore();
+  a.globalCompositeOperation = 'source-atop';
+  const lit = a.createLinearGradient(0, 0, size, size);
+  lit.addColorStop(0, 'rgba(255,255,255,0.2)');
+  lit.addColorStop(0.5, 'rgba(255,255,255,0)');
+  lit.addColorStop(1, 'rgba(0,0,10,0.3)');
+  a.fillStyle = lit;
+  a.fillRect(0, 0, size, size);
+  const spot = a.createRadialGradient(half - r * 0.38, half - r * 0.45, 0, half - r * 0.38, half - r * 0.45, r * 0.5);
+  spot.addColorStop(0, 'rgba(255,255,255,0.4)');
+  spot.addColorStop(1, 'rgba(255,255,255,0)');
+  a.fillStyle = spot;
+  a.fillRect(0, 0, size, size);
+  // Rim light: the silhouette minus itself shifted down-right leaves the lit top-left edge.
+  b.globalCompositeOperation = 'source-over';
+  b.clearRect(0, 0, size, size);
+  b.drawImage(finishA, 0, 0, size, size, 0, 0, size, size);
+  b.globalCompositeOperation = 'destination-out';
+  b.drawImage(finishA, 0, 0, size, size, 2, 2, size, size);
+  b.globalCompositeOperation = 'source-in';
+  b.fillStyle = RIM_COLORS[kindId] ?? '#ffffff';
+  b.fillRect(0, 0, size, size);
+  a.globalCompositeOperation = 'source-over';
+  a.globalAlpha = 0.85;
+  a.drawImage(finishB, 0, 0, size, size, 0, 0, size, size);
+  a.globalAlpha = 1;
+  // Crisp outline.
+  c.globalCompositeOperation = 'source-over';
+  c.clearRect(0, 0, size, size);
+  c.drawImage(finishA, 0, 0, size, size, 0, 0, size, size);
+  c.globalCompositeOperation = 'source-in';
+  c.fillStyle = '#06080f';
+  c.fillRect(0, 0, size, size);
+  const w = Math.max(1, Math.min(2, r / 7));
+  for (let k = 0; k < 8; k += 1) ctx.drawImage(finishC, 0, 0, size, size, -half + Math.cos((k / 8) * TAU) * w, -half + Math.sin((k / 8) * TAU) * w, size, size);
+  ctx.drawImage(finishA, 0, 0, size, size, -half, -half, size, size);
+}
+
 export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
   const flashing = (st.flash ?? 0) > 0;
   ctx.save();
@@ -361,8 +424,12 @@ export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
   else {
     const bob = kindId === 'golem' || kindId === 'ram' ? Math.sin(t * 6) * r * 0.05 : Math.sin(t * 9) * r * 0.08;
     ctx.translate(0, bob);
-    if ((st.face ?? 1) < 0) ctx.scale(-1, 1);
-    painters[kindId](ctx, r, t, st, flashing);
+    const flicker = kindId === 'imp' || kindId === 'swarm' ? 1 + 0.03 * Math.sin(t * 15) : kindId === 'wraith' ? 1 + 0.02 * Math.sin(t * 5) : 1;
+    finished(ctx, kindId, r, (g) => {
+      if ((st.face ?? 1) < 0) g.scale(-1, 1);
+      g.scale(flicker, 2 - flicker);
+      painters[kindId](g, r, t, st, flashing);
+    });
   }
   if ((st.frozen ?? 0) > 0) {
     ctx.globalAlpha = 0.42;

@@ -64,7 +64,9 @@ function stone(ctx, u, top, bottom, rim, flash, outline = 4.5) {
 }
 
 /** Glowing cracks: polylines in unit coordinates, drawn with additive light. */
+let pulseT = 0;
 function cracks(ctx, u, lines, color, power) {
+  power *= 0.8 + 0.2 * Math.sin(pulseT * 3.2 + lines[0][0][0] * 4);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'round';
@@ -285,6 +287,7 @@ function drawHead(ctx, u, flash, ruin, exposed, lit) {
  * the win screen.
  */
 export function drawColossus(ctx, u, t, st) {
+  pulseT = t;
   const broken = st.plates ?? 0;
   const exposed = (st.exposed ?? 0) > 0;
   const ruin = Boolean(st.ruin);
