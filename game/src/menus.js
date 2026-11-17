@@ -11,10 +11,10 @@ import { drawKeyBar } from './hud.js';
 const CHIP_W = 300;
 const CHIP_GAP = 20;
 /** Clickable difficulty buttons, left to right (Apprentice, Adept, Archmage). */
-export const DIFF_CHIPS = DIFFICULTIES.map((_, i) => ({ x: (W - (3 * CHIP_W + 2 * CHIP_GAP)) / 2 + i * (CHIP_W + CHIP_GAP), y: 474, w: CHIP_W, h: 70 }));
+export const DIFF_CHIPS = DIFFICULTIES.map((_, i) => ({ x: (W - (3 * CHIP_W + 2 * CHIP_GAP)) / 2 + i * (CHIP_W + CHIP_GAP), y: 490, w: CHIP_W, h: 58 }));
 /** The "Same seed" toggle and the big start button. */
-export const SEED_CHIP = { x: 440, y: 554, w: 400, h: 38 };
-export const START_BUTTON = { x: 250, y: 624, w: 780, h: 104 };
+export const SEED_CHIP = { x: 440, y: 556, w: 400, h: 34 };
+export const START_BUTTON = { x: 250, y: 602, w: 780, h: 96 };
 
 /** What the pointer is over on the title screen: {type:'diff', index}, {type:'seed'}, {type:'start'} or null. */
 export function titleHit(x, y) {
@@ -75,45 +75,79 @@ export function drawLogo(ctx, x, y, size) {
 
 /** The six reactions as tiles: glyph + glyph = result, with the name in bold. */
 const TILES = [
-  ['fire', 'water', 'steam', 'STEAM', 26],
-  ['fire', 'earth', 'lava', 'LAVA', 26],
-  ['water', 'storm', 'shock', 'SHOCK', 26],
-  ['steam', 'storm', 'cloud', 'STORMCLOUD', 21],
-  ['earth', 'storm', 'magnet', 'MAGNET', 26],
-  ['water', 'frost', 'ice', 'ICE', 26],
+  ['fire', 'water', 'steam', 'STEAM', 23],
+  ['fire', 'earth', 'lava', 'LAVA', 23],
+  ['water', 'storm', 'shock', 'SHOCK', 23],
+  ['steam', 'storm', 'cloud', 'STORMCLOUD', 18],
+  ['earth', 'storm', 'magnet', 'MAGNET', 23],
+  ['water', 'frost', 'ice', 'ICE', 23],
 ];
 
 function drawTile(ctx, tile, x, y, w, h) {
   const [a, b, result, name, size] = tile;
   const color = GLYPH_COLORS[result];
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 16);
+  ctx.roundRect(x, y, w, h, 14);
   ctx.fillStyle = 'rgba(8,10,18,0.9)';
   ctx.fill();
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3.5;
   ctx.strokeStyle = color;
   ctx.stroke();
   drawFiligree(ctx, x + 3, y + 3, w - 6, h - 6, '#d4aa55');
   const cx = x + w / 2;
-  drawGlyph(ctx, a, cx - 52, y + 42, 21, GLYPH_COLORS[a], 4);
-  drawText(ctx, '+', cx, y + 51, { size: 32, align: 'center' });
-  drawGlyph(ctx, b, cx + 52, y + 42, 21, GLYPH_COLORS[b], 4);
+  drawGlyph(ctx, a, cx - 48, y + 30, 17, GLYPH_COLORS[a], 3.5);
+  drawText(ctx, '+', cx, y + 38, { size: 26, align: 'center' });
+  drawGlyph(ctx, b, cx + 48, y + 30, 17, GLYPH_COLORS[b], 3.5);
   ctx.strokeStyle = '#d4aa55';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(x + 20, y + 80);
-  ctx.lineTo(x + w - 20, y + 80);
+  ctx.moveTo(x + 18, y + 56);
+  ctx.lineTo(x + w - 18, y + 56);
   ctx.stroke();
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.35;
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(cx, y + 122, 38, 0, 6.283);
+  ctx.arc(cx, y + 88, 28, 0, 6.283);
   ctx.fill();
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
-  drawGlyph(ctx, result, cx, y + 122, 29, color, 5);
-  drawText(ctx, name, cx, y + 178, { size, color, align: 'center' });
+  drawGlyph(ctx, result, cx, y + 88, 21, color, 4.5);
+  drawText(ctx, name, cx, y + 130, { size, color, align: 'center' });
+}
+
+/** The three how-to-play steps, each with an icon, large enough to read as a thumbnail. */
+const STEPS = [
+  ['spiral', '1  PAINT', 'elements with the mouse', '#ffd24a'],
+  ['steam', '2  REACT:', 'mix two elements', '#5ff0ff'],
+  ['shock', '3  CHAIN', 'reactions through the horde', '#ffe23a'],
+];
+
+function drawSteps(ctx) {
+  const w = 388;
+  const gap = 16;
+  const x0 = (W - (3 * w + 2 * gap)) / 2;
+  STEPS.forEach(([glyph, head, sub, color], i) => {
+    const x = x0 + i * (w + gap);
+    const y = 252;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, 76, 14);
+    ctx.fillStyle = 'rgba(8,10,18,0.92)';
+    ctx.fill();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#d4aa55';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 46, y + 38, 28, 0, 6.283);
+    ctx.fillStyle = '#05070c';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    drawGlyph(ctx, glyph, x + 46, y + 38, 18, color, 4);
+    drawText(ctx, head, x + 88, y + 36, { size: 30, color });
+    drawText(ctx, sub, x + 88, y + 62, { size: 19, color: '#ffffff', weight: 800, outline: 2 });
+  });
 }
 
 /** Paint the title screen. `difficulty` is the chosen index; `hit` the hovered target or null. */
@@ -124,7 +158,7 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed) {
   ['fire', 'water', 'earth', 'storm'].forEach((kind, k) => {
     const a = time * 0.7 + (k / 4) * 6.283;
     const x = W / 2 + Math.cos(a) * 520;
-    const y = 128 + Math.sin(a) * 36;
+    const y = 118 + Math.sin(a) * 34;
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = GLYPH_COLORS[kind];
@@ -135,13 +169,14 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed) {
     ctx.globalCompositeOperation = 'source-over';
     drawGlyph(ctx, kind, x, y, 21, '#ffffff', 5);
   });
-  drawLogo(ctx, W / 2, 190, 176);
-  drawText(ctx, 'Paint four elements. Make them react. Hold the Core.', W / 2, 240, { size: 36, color: '#ffffff', align: 'center' });
+  drawLogo(ctx, W / 2, 186, 160);
+  drawText(ctx, 'Paint four elements. Make them react. Hold the Core.', W / 2, 232, { size: 32, color: '#ffffff', align: 'center' });
+  drawSteps(ctx);
   // Reaction tiles.
   const tw = 188;
   const gap = 12;
   const x0 = (W - (6 * tw + 5 * gap)) / 2;
-  TILES.forEach((tile, i) => drawTile(ctx, tile, x0 + i * (tw + gap), 264, tw, 198));
+  TILES.forEach((tile, i) => drawTile(ctx, tile, x0 + i * (tw + gap), 340, tw, 142));
   // Difficulty.
   DIFFICULTIES.forEach((d, i) => {
     const c = DIFF_CHIPS[i];
@@ -154,8 +189,8 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed) {
     ctx.lineWidth = selected ? 5 : 2.5;
     ctx.strokeStyle = selected ? '#ffd24a' : '#5a6480';
     ctx.stroke();
-    drawText(ctx, d.name, c.x + c.w / 2, c.y + 38, { size: 32, color: selected ? '#ffd24a' : '#ffffff', align: 'center' });
-    drawText(ctx, d.tag, c.x + c.w / 2, c.y + 60, { size: 16, color: '#aab4cc', align: 'center', weight: 700, outline: 0 });
+    drawText(ctx, d.name, c.x + c.w / 2, c.y + 35, { size: 29, color: selected ? '#ffd24a' : '#ffffff', align: 'center' });
+    drawText(ctx, d.tag, c.x + c.w / 2, c.y + 53, { size: 15, color: '#aab4cc', align: 'center', weight: 700, outline: 0 });
   });
   // Same seed.
   const s = SEED_CHIP;
@@ -197,6 +232,6 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed) {
   ctx.beginPath();
   ctx.roundRect(b.x, b.y, b.w, b.h, 22);
   ctx.stroke();
-  drawText(ctx, 'CLICK TO START', b.x + b.w / 2, b.y + 72, { size: 66, color: '#1a0c00', align: 'center', outline: 0 });
+  drawText(ctx, 'CLICK TO START', b.x + b.w / 2, b.y + 68, { size: 62, color: '#1a0c00', align: 'center', outline: 0 });
   drawKeyBar(ctx);
 }

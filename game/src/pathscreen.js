@@ -7,13 +7,14 @@ import { BOONS, RARITY, REROLL_COST } from './boons.js';
 import { NODE_TYPES, nodeById, nodePosition, reachableNodes } from './path.js';
 import { drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
 import { drawText } from './draw.js';
+import { drawToolBar } from './hud.js';
 
 const INK = '#f4e8c8';
 const GOLD = '#d4aa55';
 
 /** The three boon cards on the right (also click targets), and the reroll button under them. */
-export const PATH_BOON_CARDS = [0, 1, 2].map((i) => ({ x: 820, y: 140 + i * 142, w: 430, h: 132 }));
-export const REROLL_BUTTON = { x: 820, y: 572, w: 430, h: 60 };
+export const PATH_BOON_CARDS = [0, 1, 2].map((i) => ({ x: 820, y: 132 + i * 136, w: 430, h: 128 }));
+export const REROLL_BUTTON = { x: 820, y: 546, w: 430, h: 56 };
 /** The shrine dialog's two buttons. */
 export const SHRINE_BUTTONS = [{ x: 330, y: 420, w: 300, h: 90, choice: 'heal' }, { x: 650, y: 420, w: 300, h: 90, choice: 'reroll' }];
 
@@ -189,7 +190,7 @@ function tooltip(ctx, node) {
   const type = NODE_TYPES[node.type];
   const w = 330;
   const x = Math.min(790 - w, Math.max(40, p.x - w / 2));
-  const top = 616;
+  const top = 552;
   ctx.strokeStyle = type.color;
   ctx.lineWidth = 3;
   ctx.setLineDash([6, 5]);
@@ -240,7 +241,7 @@ function boonCards(ctx, game, ui, time) {
     ctx.roundRect(c.x + 7, c.y + 7, c.w - 14, c.h - 14, 11);
     ctx.stroke();
     ctx.globalCompositeOperation = 'lighter';
-    const glow = ctx.createRadialGradient(c.x + 68, c.y + 66, 5, c.x + 68, c.y + 66, 70);
+    const glow = ctx.createRadialGradient(c.x + 68, c.y + 64, 5, c.x + 68, c.y + 64, 70);
     glow.addColorStop(0, boon.color);
     glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.5;
@@ -249,23 +250,23 @@ function boonCards(ctx, game, ui, time) {
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.beginPath();
-    ctx.arc(c.x + 68, c.y + 66, 46, 0, 6.283);
+    ctx.arc(c.x + 68, c.y + 64, 44, 0, 6.283);
     ctx.fillStyle = '#080a12';
     ctx.fill();
     ctx.lineWidth = 5;
     ctx.strokeStyle = GOLD;
     ctx.stroke();
-    drawGlyph(ctx, boon.glyph, c.x + 68, c.y + 66, 26, boon.color, 6);
+    drawGlyph(ctx, boon.glyph, c.x + 68, c.y + 64, 25, boon.color, 6);
     ctx.beginPath();
     ctx.roundRect(c.x + c.w - 112, c.y + 14, 98, 24, 12);
     ctx.fillStyle = rarity.color;
     ctx.fill();
     drawText(ctx, rarity.label, c.x + c.w - 63, c.y + 32, { size: 16, color: '#ffffff', align: 'center', outline: 2 });
-    drawText(ctx, boon.name.toUpperCase(), c.x + 128, c.y + 62, { size: boon.name.length > 15 ? 22 : 27, color: '#ffffff' });
+    drawText(ctx, boon.name.toUpperCase(), c.x + 128, c.y + 54, { size: boon.name.length > 15 ? 22 : 26, color: '#ffffff' });
     ctx.font = `700 17px ${FONT}`;
-    wrap(ctx, boon.desc, c.w - 150).slice(0, 2).forEach((line, n) => drawText(ctx, line, c.x + 128, c.y + 84 + n * 18, { size: 16, color: '#c9d2e8', weight: 700, outline: 0 }));
-    drawText(ctx, boon.synergy, c.x + 128, c.y + 124, { size: 13, color: rarity.color, weight: 800, outline: 0 });
-    drawText(ctx, `[${i + 1}]`, c.x + c.w - 18, c.y + 122, { size: 30, color: Math.floor(time * 3) % 2 === 0 && lit ? '#ffffff' : '#ffd24a', align: 'right' });
+    wrap(ctx, boon.desc, c.w - 150).slice(0, 2).forEach((line, n) => drawText(ctx, line, c.x + 128, c.y + 76 + n * 17, { size: 16, color: '#c9d2e8', weight: 700, outline: 0 }));
+    drawText(ctx, boon.synergy, c.x + 128, c.y + 114, { size: 13, color: rarity.color, weight: 800, outline: 0 });
+    drawText(ctx, `[${i + 1}]`, c.x + c.w - 18, c.y + 118, { size: 28, color: Math.floor(time * 3) % 2 === 0 && lit ? '#ffffff' : '#ffd24a', align: 'right' });
   });
   // Reroll.
   const b = REROLL_BUTTON;
@@ -283,17 +284,17 @@ function boonCards(ctx, game, ui, time) {
   drawGlyph(ctx, 'spiral', b.x + 42, b.y + 31, 17, '#1a0c00', 4);
   drawText(ctx, 'REROLL', b.x + 80, b.y + 42, { size: 34, color: '#1a0c00', outline: 0 });
   drawText(ctx, game.rerolls > 0 ? `FREE  (${game.rerolls} left)` : `costs ${REROLL_COST} essence per pool`, b.x + b.w - 18, b.y + 39, { size: 19, color: '#1a0c00', align: 'right', outline: 0, weight: 800 });
-  drawText(ctx, `Rerolls left: ${game.rerolls}   -   [Q] reroll   -   keys [1] [2] [3] pick`, 820, 668, { size: 16, color: '#c9d2e8', outline: 0, weight: 700 });
+  drawText(ctx, `Rerolls left: ${game.rerolls}   -   [Q] reroll   -   keys [1] [2] [3] pick`, 820, 630, { size: 16, color: '#c9d2e8', outline: 0, weight: 700 });
 }
 
 function boonRow(ctx, game) {
-  drawText(ctx, 'BOONS COLLECTED', 40, 716, { size: 15, color: '#c9a96a', outline: 0 });
+  drawText(ctx, 'BOONS', 820, 674, { size: 15, color: '#c9a96a', outline: 0 });
   const held = BOONS.filter((b) => game.boons[b.id]);
-  if (held.length === 0) drawText(ctx, 'none yet - clear a rift to earn one', 40, 752, { size: 17, color: '#aab4cc', outline: 0, weight: 700 });
+  if (held.length === 0) drawText(ctx, 'none yet - clear a rift to earn one', 890, 674, { size: 15, color: '#aab4cc', outline: 0, weight: 700 });
   held.slice(0, 8).forEach((b, i) => {
-    const x = 62 + i * 92;
-    drawGlyphTile(ctx, b.glyph, x, 752, 38, b.color);
-    if (game.boons[b.id] > 1) drawText(ctx, `x${game.boons[b.id]}`, x + 24, 772, { size: 15, color: INK, outline: 2 });
+    const x = 904 + i * 44;
+    drawGlyphTile(ctx, b.glyph, x, 668, 30, b.color);
+    if (game.boons[b.id] > 1) drawText(ctx, `x${game.boons[b.id]}`, x + 16, 686, { size: 12, color: INK, outline: 2 });
   });
 }
 
@@ -324,6 +325,7 @@ export function drawPath(ctx, game, time, ui = {}) {
   if (hovered) tooltip(ctx, hovered);
   boonRow(ctx, game);
   boonCards(ctx, game, ui, time);
+  drawToolBar(ctx, game, time);
 }
 
 /** The shrine dialog, drawn over the path screen. */

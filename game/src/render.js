@@ -1,10 +1,13 @@
 // Paints the battlefield: the cached obsidian floor, torn rift portals, every painted cell as a
 // material (materials.js), the faceted Core Crystal, creatures, particles, floating text and the
 // brush cursor. The HUD and the overlay screens are painted on top by hud.js and screens.js.
-import { CELL, CORE, FIELD, GATES } from './config.js';
-import { BRUSHES, ELEMENTS } from './elements.js';
+import { CELL, COLS, CORE, FIELD, GATES } from './config.js';
+import { BRUSHES, ELEMENTS, ruleFor } from './elements.js';
 import { toScreenX, toScreenY } from './grid.js';
-import { drawCreatures } from './creatures.js';
+import { KINDS, drawCreatures } from './creatures.js';
+import { flowDirection } from './pathing.js';
+import { drawText } from './draw.js';
+import { drawLabels } from './labels.js';
 import { drawBossWarning } from './boss.js';
 import { drawParticles, drawTexts } from './particles.js';
 import { upcoming } from './rifts.js';
@@ -244,27 +247,130 @@ function drawCore(ctx, game, time) {
   ctx.restore();
 }
 
+const BRUSH_GLYPHS = ['fire', 'water', 'earth', 'storm'];
+
+/** A small dark tag next to the brush: text in the element colour. */
+function cursorTag(ctx, x, y, text, color) {
+  ctx.font = '800 12px sans-serif';
+  const w = ctx.measureText(text).width + 14;
+  const left = Math.min(FIELD.x + FIELD.w - w - 4, Math.max(FIELD.x + 4, x));
+  ctx.beginPath();
+  ctx.roundRect(left, y, w, 20, 6);
+  ctx.fillStyle = 'rgba(4,6,10,0.92)';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  drawText(ctx, text, left + 7, y + 15, { size: 12, color: '#ffffff', align: 'left', weight: 800, outline: 0 });
+}
+
+/**
+ * The player's brush: a glowing arcane orb in the selected element's colour with its glyph, a small
+ * "YOU" tag, a fading glowing stroke trail while painting, and, when the stroke lands on something
+ * it reacts with, a note of what it will make ("painting STORM > CHARGED WATER").
+ */
 function drawCursor(ctx, game, time) {
   const cur = game.cursor;
   if (!cur.inField) return;
-  const element = ELEMENTS[BRUSHES[game.brush]];
+  const index = game.brush;
+  const element = ELEMENTS[BRUSHES[index]];
   const x = toScreenX(cur.x);
   const y = toScreenY(cur.y);
   const radius = game.mods.brushRadius * CELL;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 1; i < cur.trail.length; i += 1) {
+    const a = cur.trail[i - 1];
+    const b = cur.trail[i];
+    const fade = Math.max(0, 1 - b.age / 0.9);
+    ctx.strokeStyle = ELEMENTS[BRUSHES[b.brush]].glow;
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.lineWidth = 16 * fade + 4;
+    ctx.beginPath();
+    ctx.moveTo(toScreenX(a.x), toScreenY(a.y));
+    ctx.lineTo(toScreenX(b.x), toScreenY(b.y));
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const glow = ctx.createRadialGradient(x, y, 2, x, y, 34);
+  glow.addColorStop(0, element.glow);
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - 34, y - 34, 68, 68);
+  ctx.globalCompositeOperation = 'source-over';
   ctx.strokeStyle = element.color;
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([6, 5]);
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = -time * 20;
   ctx.beginPath();
   ctx.arc(x, y, radius + 3, 0, 6.283);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.globalAlpha = cur.down ? 0.35 : 0.18;
-  ctx.fillStyle = element.color;
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, 6.283);
-  ctx.fill();
   ctx.globalAlpha = 1;
+  // The orb itself.
+  ctx.beginPath();
+  ctx.arc(x, y, 13, 0, 6.283);
+  ctx.fillStyle = '#080a12';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = element.color;
+  ctx.stroke();
+  drawGlyph(ctx, BRUSH_GLYPHS[index], x, y, 8, '#ffffff', 2.4);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 3; k += 1) {
+    const a = time * 3 + k * 2.1;
+    ctx.fillStyle = element.glow;
+    ctx.fillRect(x + Math.cos(a) * 19 - 1.5, y + Math.sin(a) * 19 - 1.5, 3, 3);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  cursorTag(ctx, x + 16, y - 34, 'YOU', '#ffd24a');
+  if (cur.down) {
+    const under = game.grid.type[Math.floor(cur.y) * COLS + Math.floor(cur.x)] ?? 0;
+    const rule = under ? ruleFor(under, BRUSHES[index]) : null;
+    const made = rule && rule.a ? ELEMENTS[rule.a].name : '';
+    cursorTag(ctx, x + 16, y + 18, made ? `painting ${element.name} \u2192 ${made}` : `painting ${element.name}`, element.color);
+  }
+}
+
+/** Dotted approach paths: where the nearest creatures will walk to reach the Core, following the flow field. */
+const step = { x: 0, y: 0 };
+function drawApproachPaths(ctx, game) {
+  const cx = CORE.col + 0.5;
+  const cy = CORE.row + 0.5;
+  const walkers = game.creatures
+    .filter((c) => !c.dead && c.frozen <= 0 && KINDS[c.kind] && !KINDS[c.kind].boss && Math.hypot(c.x - cx, c.y - cy) > 5)
+    .sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))
+    .slice(0, 9);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.setLineDash([2, 9]);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,224,150,0.5)';
+  for (const c of walkers) {
+    let x = c.x;
+    let y = c.y;
+    ctx.beginPath();
+    ctx.moveTo(toScreenX(x), toScreenY(y));
+    for (let n = 0; n < 40 && Math.hypot(x - cx, y - cy) > 2.2; n += 1) {
+      if (KINDS[c.kind].flies) {
+        const len = Math.hypot(cx - x, cy - y) || 1;
+        step.x = (cx - x) / len;
+        step.y = (cy - y) / len;
+      } else flowDirection(game.flow, x, y, step);
+      x += step.x * 0.7;
+      y += step.y * 0.7;
+      ctx.lineTo(toScreenX(x), toScreenY(y));
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 let bloomCanvas = null;
@@ -318,17 +424,19 @@ export function drawBattlefield(ctx, game, time) {
   ctx.clip();
   ctx.translate(Math.sin(time * 91) * shake, Math.cos(time * 73) * shake);
   ctx.drawImage(getGround(), FIELD.x, FIELD.y);
-  ctx.globalAlpha = game.cursor.down ? 0.12 : 0.035;
+  ctx.globalAlpha = game.cursor.down ? 0.07 : 0.035;
   ctx.drawImage(getGridLines(), FIELD.x, FIELD.y);
   ctx.globalAlpha = 1;
   drawGates(ctx, game, time);
   drawMaterials(ctx, game, time);
   drawCore(ctx, game, time);
   drawBossWarning(ctx, game);
+  drawApproachPaths(ctx, game);
   drawCreatures(ctx, game, time);
   drawParticles(ctx, game.fx);
   drawCursor(ctx, game, time);
   drawTexts(ctx, game.fx);
+  drawLabels(ctx, game);
   drawBloomAndGrain(ctx);
   ctx.restore();
   if (game.fx.flash > 0) {

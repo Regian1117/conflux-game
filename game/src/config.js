@@ -7,20 +7,20 @@ export const H = 800;
 export const STEP = 1 / 60;
 
 export const COLS = 51;
-export const ROWS = 33;
+export const ROWS = 30;
 export const CELL = 20;
 /** Where the battlefield sits on the canvas. */
 export const FIELD = { x: 12, y: 84, w: COLS * CELL, h: ROWS * CELL };
 
 export const RIFT_COUNT = 7;
 /** The Core Crystal fills the 3x3 cells around (col, row). */
-export const CORE = { col: 25, row: 16, maxHp: 100, hitRadius: 1.8 };
+export const CORE = { col: 25, row: 14, maxHp: 100, hitRadius: 1.8 };
 /** Rift gates on the four edges: where creatures step out. */
 export const GATES = {
-  W: { col: 0, row: 16, name: 'WEST' },
-  E: { col: 50, row: 16, name: 'EAST' },
+  W: { col: 0, row: 14, name: 'WEST' },
+  E: { col: 50, row: 14, name: 'EAST' },
   N: { col: 25, row: 0, name: 'NORTH' },
-  S: { col: 25, row: 32, name: 'SOUTH' },
+  S: { col: 25, row: 29, name: 'SOUTH' },
 };
 
 export const ESSENCE = { max: 100, regen: 7, perCell: 1.0, refreshCost: 0.4 };

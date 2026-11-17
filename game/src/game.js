@@ -56,7 +56,7 @@ export function createGame(seed, difficulty = 1) {
     seen: {},
     tip: null,
     boss: null,
-    cursor: { x: 0, y: 0, down: false, inField: false, lastX: null, lastY: null },
+    cursor: { x: 0, y: 0, down: false, inField: false, lastX: null, lastY: null, trail: [] },
   };
   game.fx = createFx(createRandom(seed ^ 0x9e3779b9));
   deriveMods(game);
@@ -101,6 +101,8 @@ function applyPainting(game) {
     }
     if (result.events.length > 0) reactNow(game, result.events);
   }
+  const tail = cur.trail[cur.trail.length - 1];
+  if (!tail || Math.hypot(tail.x - cur.x, tail.y - cur.y) > 0.4) cur.trail.push({ x: cur.x, y: cur.y, age: 0, brush: game.brush });
   cur.lastX = cur.x;
   cur.lastY = cur.y;
 }
@@ -147,6 +149,9 @@ export function updateGame(game, dt) {
   updateFx(game.fx, dt);
   for (let i = 0; i < 4; i += 1) game.emptyFlash[i] = Math.max(0, game.emptyFlash[i] - dt);
   game.core.hitFlash = Math.max(0, game.core.hitFlash - dt);
+  // The brush's fading stroke trail.
+  for (const point of game.cursor.trail) point.age += dt;
+  game.cursor.trail = game.cursor.trail.filter((point) => point.age < 0.9);
   if (game.phase === 'won' || game.phase === 'lost' || game.phase === 'path' || game.phase === 'shrine') return;
 
   game.t += dt;

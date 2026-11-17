@@ -76,7 +76,7 @@ function paint(game, screen, bests, time, ui = {}) {
     // No game HUD behind the title: the attract battlefield, enlarged, blurred and darkened.
     ctx.save();
     ctx.filter = 'blur(4px) brightness(0.95) saturate(1.1)';
-    ctx.drawImage(canvas, 12, 84, 1020, 660, 0, 0, W, H);
+    ctx.drawImage(canvas, 12, 84, 1020, 600, 0, 0, W, H);
     ctx.restore();
     drawTitle(ctx, time, ui.difficulty ?? 1, ui.hit ?? null, Boolean(ui.sameSeed), ui.seed ?? 0);
     return;

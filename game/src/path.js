@@ -71,5 +71,5 @@ export function routeSummary(map, route) {
 
 /** Map position of node (row 1-7, index of count) inside the map area. */
 export function nodePosition(row, index, count) {
-  return { x: 92 + (row - 1) * 106, y: 190 + ((index + 0.5) * 430) / count };
+  return { x: 92 + (row - 1) * 106, y: 170 + ((index + 0.5) * 380) / count };
 }
