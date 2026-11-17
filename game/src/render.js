@@ -410,25 +410,9 @@ function drawBloomAndGrain(ctx) {
   ctx.globalAlpha = 1;
   const vignette = ctx.createRadialGradient(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.h * 0.38, FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.w * 0.62);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.17)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.42)');
   ctx.fillStyle = vignette;
   ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-}
-
-/** A soft additive light along the focal diagonal (the cover): storm bolt to Colossus, chain across the pool, Core. */
-function drawFocus(ctx, pts) {
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const [w, a] of [[90, 0.07], [46, 0.09], [16, 0.1]]) {
-    ctx.lineWidth = w;
-    ctx.strokeStyle = `rgba(210,200,255,${a})`;
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 /** Paint the whole battlefield for this frame (inside the FIELD rectangle, with screen shake). */
@@ -453,7 +437,6 @@ export function drawBattlefield(ctx, game, time) {
   drawCursor(ctx, game, time);
   drawTexts(ctx, game.fx);
   drawLabels(ctx, game);
-  if (game.focusLine) drawFocus(ctx, game.focusLine);
   drawBloomAndGrain(ctx);
   ctx.restore();
   if (game.fx.flash > 0) {

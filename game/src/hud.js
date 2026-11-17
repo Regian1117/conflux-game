@@ -10,8 +10,7 @@ import { BOONS } from './boons.js';
 import { chainMult, reactionGrade } from './score.js';
 import { RIFT_PLANS, incomingSummary, upcoming } from './rifts.js';
 import { NODE_TYPES } from './path.js';
-import { drawBar, drawPanel as basePanel, drawText, formatNumber } from './draw.js';
-/** Every HUD panel shares one thin muted-gold border. */const drawPanel = (ctx, x, y, w, h, o = {}) => basePanel(ctx, x, y, w, h, { ...o, edge: '#9a8048', lineWidth: 1.5 });
+import { drawBar, drawPanel, drawText, formatNumber } from './draw.js';
 import { isMuted } from './audio.js';
 import { GLYPH_COLORS, drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
 
@@ -24,8 +23,8 @@ export const PANEL_W = 224;
 const MID_X = 236;
 const MID_W = PANEL_X - 10 - MID_X;
 /** Clickable brush cards, so the mouse can pick a brush as well as keys 1-4. */
-const BAR_Y = 710;
-export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: 12 + i * 204, y: BAR_Y, w: 196, h: 86 }));
+const BAR_Y = 692;
+export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: 12 + i * 204, y: BAR_Y, w: 196, h: 104 }));
 
 /** Two-word reaction hints, one per element slot. */
 const BRUSH_HINTS = ['+WATER = STEAM', '+STORM = SHOCK', '+FIRE = LAVA', '+WATER = CHARGED'];
@@ -159,17 +158,17 @@ function drawBrushSlots(ctx, game, time) {
     ctx.stroke();
     drawText(ctx, String(i + 1), c.x + 21, c.y + 28, { size: 18, align: 'center', outline: 0 });
     ctx.beginPath();
-    ctx.arc(c.x + 52, c.y + 48, 26, 0, 6.283);
+    ctx.arc(c.x + 52, c.y + 58, 28, 0, 6.283);
     ctx.fillStyle = '#070910';
     ctx.fill();
     ctx.lineWidth = 4;
     ctx.strokeStyle = el.color;
     ctx.stroke();
-    drawGlyph(ctx, BRUSH_GLYPHS[i], c.x + 52, c.y + 48, 18, el.color, 5);
-    drawText(ctx, el.name, c.x + 92, c.y + 34, { size: 20, color: el.color });
-    drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 10, c.y + 22, { size: 16, align: 'right', color: '#ffffff' });
-    drawBar(ctx, c.x + 92, c.y + 40, c.w - 102, 12, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
-    drawText(ctx, BRUSH_HINTS[i], c.x + c.w / 2, c.y + 80, { size: 14, color: '#ffd9a0', align: 'center', weight: 800, outline: 2 });
+    drawGlyph(ctx, BRUSH_GLYPHS[i], c.x + 52, c.y + 58, 19, el.color, 5);
+    drawText(ctx, el.name, c.x + 92, c.y + 40, { size: 20, color: el.color });
+    drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 10, c.y + 24, { size: 16, align: 'right', color: '#ffffff' });
+    drawBar(ctx, c.x + 92, c.y + 47, c.w - 102, 12, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
+    drawText(ctx, BRUSH_HINTS[i], c.x + c.w / 2, c.y + 96, { size: 15, color: '#ffd9a0', align: 'center', weight: 800, outline: 2 });
   });
 }
 
@@ -180,13 +179,13 @@ function drawComboBadge(ctx, game) {
   const count = game.chain.count;
   const grade = count >= 2 ? reactionGrade(count) : null;
   const color = grade ? GRADE_COLORS[grade] : P.muted;
-  drawPanel(ctx, x, BAR_Y, w, 86, { edge: grade ? color : P.panelEdge, lineWidth: grade ? 4 : 2 });
+  drawPanel(ctx, x, BAR_Y, w, 104, { edge: grade ? color : P.panelEdge, lineWidth: grade ? 4 : 2 });
   drawText(ctx, 'CHAIN', x + 12, BAR_Y + 20, { size: 13, color: P.muted, outline: 0 });
-  drawText(ctx, count > 0 ? `x${count}` : '-', x + 12, BAR_Y + 54, { size: 40, color: count >= 5 ? '#ffe23a' : count > 0 ? '#ffffff' : P.muted });
+  drawText(ctx, count > 0 ? `x${count}` : '-', x + 12, BAR_Y + 66, { size: 46, color: count >= 5 ? '#ffe23a' : count > 0 ? '#ffffff' : P.muted });
   drawText(ctx, 'GRADE', x + w - 52, BAR_Y + 20, { size: 13, color: P.muted, align: 'center', outline: 0 });
-  drawText(ctx, grade ?? '-', x + w - 52, BAR_Y + 62, { size: 56, color, align: 'center' });
-  drawText(ctx, count > 0 ? `score x${chainMult(count).toFixed(1)}` : 'no combo', x + 12, BAR_Y + 72, { size: 13, color: '#ffd9a0', outline: 0, weight: 800 });
-  if (count > 0) drawBar(ctx, x + 12, BAR_Y + 77, w - 24, 5, game.chain.timer / REACT.chainWindow, color);
+  drawText(ctx, grade ?? '-', x + w - 52, BAR_Y + 72, { size: 64, color, align: 'center' });
+  drawText(ctx, count > 0 ? `score x${chainMult(count).toFixed(1)}` : 'no combo', x + 12, BAR_Y + 86, { size: 13, color: '#ffd9a0', outline: 0, weight: 800 });
+  if (count > 0) drawBar(ctx, x + 12, BAR_Y + 92, w - 24, 6, game.chain.timer / REACT.chainWindow, color);
 }
 
 /** The bottom spell bar: element slots, chain badge and the compact control keys. */
@@ -289,9 +288,9 @@ function drawHowTo(ctx, game) {
   ctx.font = `800 ${size}px sans-serif`;
   const w = ctx.measureText(text).width + 34;
   const x = FIELD.x + (FIELD.w - w) / 2;
-  const y = BAR_Y - 28;
+  const y = FIELD.y + FIELD.h - 36;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, 20, 8);
+  ctx.roundRect(x, y, w, 28, 8);
   ctx.fillStyle = 'rgba(4,5,8,0.92)';
   ctx.fill();
   ctx.lineWidth = 2;
