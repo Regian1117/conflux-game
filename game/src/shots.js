@@ -1,17 +1,17 @@
-// The screenshot scenes behind ?shot=cover|title|pick|results. Each plays the real rules forward
+// The screenshot scenes behind ?shot=cover|title|path|results. Each plays the real rules forward
 // from a fresh game with the painting bot (autopilot.js) at the controls, so every frame is genuine
 // gameplay and the same seed always gives the same frame. A few helpers stage the moment worth
 // photographing (the board filled with every element, a chain about to land) by painting through
 // the same grid functions the player's brush uses.
 import { COLS, ROWS, STEP } from './config.js';
-import { CHARGED, CLOUD, EARTH, ICE, LAVA, STEAM, WATER } from './elements.js';
+import { CHARGED, CLOUD, EARTH, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
 import { botStep, createBot } from './autopilot.js';
 import { autoAdvance, callRift, createGame, setCursor, updateGame } from './game.js';
 import { setCell, toScreenX, toScreenY } from './grid.js';
 import { offerBoons, takeBoon } from './boons.js';
 import { damageCreature, spawnCreature } from './creatures.js';
 import { reactNow } from './reactions.js';
-import { addBolt, burst, updateFx } from './particles.js';
+import { addBolt, addFlash, addText, burst, updateFx } from './particles.js';
 import { nodeById, reachableNodes } from './path.js';
 
 const BOON_PREFERENCE = ['frost', 'wide', 'arc', 'overflow', 'shield', 'slowdecay', 'siphon', 'lava', 'mend'];
@@ -116,6 +116,8 @@ function stageCover(seed) {
   blob(game, WATER, 14, 27.5, 3.6, 2.3);
   blob(game, STEAM, 12.5, 24.5, 3.8, 2.2);
   blob(game, STEAM, 16, 26.5, 2.4, 1.5);
+  // Centre-left: dark metallic magnetite pulling a ram toward it.
+  blob(game, MAGNET, 17, 19, 1.9, 1.3);
   // Centre-right: the storm. A dark cloud mass, and charged water below it.
   blob(game, CLOUD, 38, 4.2, 7.5, 2.1);
   blob(game, CLOUD, 30.5, 5.2, 2.8, 1.5);
@@ -134,12 +136,16 @@ function stageCover(seed) {
   const frozen = [['golem', 43, 28.6], ['wraith', 46.2, 29.2], ['imp', 44.6, 26.9]];
   for (const [kind, x, y] of frozen) place(game, kind, 'E', x, y).frozen = 99;
   place(game, 'imp', 'W', 8.8, 14);
-  // The chain: five distinct creatures across the pool, each hit in turn.
-  const links = [['imp', 32, 19.9], ['wraith', 35.6, 21.5], ['beetle', 39.2, 19.9], ['golem', 42.6, 21.5], ['ram', 46, 19.9]];
+  place(game, 'ram', 'W', 19.6, 20.6);
+  place(game, 'golem', 'W', 15.5, 9);
+  place(game, 'swarm', 'S', 22.5, 27.5);
+  place(game, 'swarm', 'S', 24.4, 28.2);
+  place(game, 'swarm', 'S', 26.2, 27.4);
+  // The chain: seven creatures around the pool, each hit in turn.
+  const links = [['imp', 30.6, 19.8], ['wraith', 33.6, 21.4], ['beetle', 36.6, 19.8], ['golem', 39.6, 21.6], ['swarm', 42.2, 19.8], ['ram', 44.8, 21.6], ['imp', 47.4, 19.9]];
   const chain = links.map(([kind, x, y]) => place(game, kind, 'E', x, y));
   game.core.hp = 74;
   game.core.shield = 7;
-  game.fx.parts.length = 0;
   if (boss) {
     boss.x = BOSS_X;
     boss.y = BOSS_Y;
@@ -164,7 +170,6 @@ function stageCover(seed) {
   game.chain.kinds.clear();
   ['STEAM', 'SHOCK', 'QUENCH', 'STRIKE', 'MELT', 'MAGNET', 'FROST', 'SHATTER'].forEach((n) => game.chain.kinds.add(n));
   reactNow(game, [{ name: 'STORMSTEAM', x: 12.5, y: 24.5 }, { name: 'LAVA', x: 10.5, y: 24.5 }]);
-  game.fx.bolts.length = 0;
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
     callout.x = 735;
@@ -174,13 +179,19 @@ function stageCover(seed) {
     callout.life = callout.max = 3;
     callout.vy = 0;
   }
-  // One thick forked bolt out of the cloud onto the Colossus's shoulder, with a soft local glow.
+  // Three thick forked bolts out of the cloud: one on the Colossus's shoulder, one into the pool, one beside the Core.
   forkedBolt(game, 800, 128, 872, 262);
-  burst(game.fx, 'zap', 872, 262, 8, ['#c58aff', '#ffffff']);
-  // One chain of lightning jumping across the pool from creature to creature.
+  forkedBolt(game, 940, 130, 968, 470);
+  forkedBolt(game, 660, 128, 600, 388);
+  // The chain itself, drawn link by link with a numbered spark at each hit.
   chain.forEach((c, i) => {
-    if (i > 0) addBolt(game.fx, toScreenX(chain[i - 1].x), toScreenY(chain[i - 1].y), toScreenX(c.x), toScreenY(c.y), '#9ff3ff', 3, 2.4);
+    const x = toScreenX(c.x);
+    const y = toScreenY(c.y);
+    if (i > 0) addBolt(game.fx, toScreenX(chain[i - 1].x), toScreenY(chain[i - 1].y), x, y, '#9ff3ff', 3, 2.4);
+    addText(game.fx, x, y - 40, String(i + 1), { color: '#ffffff', size: 24, life: 3, vy: 0 });
+    burst(game.fx, 'zap', x, y, 5, ['#ffffff', '#9ff3ff']);
   });
+  addFlash(game.fx, 0.2, '#dfe8ff');
   if (boss) boss.plates = 2;
   for (let n = 0; n < 4; n += 1) updateFx(game.fx, STEP);
   setCursor(game, -500, -500, false);
@@ -197,11 +208,10 @@ function stageTitle(seed) {
 }
 
 /** The Rift Path at rift 4 of 7: three nodes behind us, two branches ahead, the boon pick open. */
-function stagePick(seed) {
+function stagePath(seed) {
   const game = createGame(seed);
   const bot = createBot();
-  advance(game, bot, 400, (g) => g.phase === 'path' && g.riftNum >= 4 && g.offer.length > 0, true);
-  game.fx.texts.length = 0;
+  advance(game, bot, 400, (g) => g.phase === 'path' && g.riftNum >= 3 && g.offer.length > 0, true);
   if (game.offer.length === 0) game.offer = offerBoons(game, null);
   const ahead = reachableNodes(game.map, game.route);
   return { game, screen: 'path', bests: { score: 0, chain: 0 }, time: game.t, hoverNode: (ahead.find((n) => n.type !== 'shrine') ?? ahead[0]).id, hoverBoon: -1 };
@@ -248,7 +258,7 @@ function stageLose(seed) {
 export function stageShot(name, seed) {
   if (name === 'lose') return stageLose(seed);
   if (name === 'title') return stageTitle(seed);
-  if (name === 'pick') return stagePick(seed);
+  if (name === 'path') return stagePath(seed);
   if (name === 'results') return stageWin(seed);
   return stageCover(seed);
 }

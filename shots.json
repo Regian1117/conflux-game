@@ -1,6 +1,6 @@
 [
   { "name": "1-cover.jpg", "query": "?shot=cover&seed=5844", "width": 1280, "height": 800 },
   { "name": "2-title.jpg", "query": "?shot=title&seed=5844", "width": 1280, "height": 800 },
-  { "name": "3-pick.jpg", "query": "?shot=pick&seed=5844", "width": 1280, "height": 800 },
+  { "name": "3-path.jpg", "query": "?shot=path&seed=5844", "width": 1280, "height": 800 },
   { "name": "4-results.jpg", "query": "?shot=results&seed=5844", "width": 1280, "height": 800 }
 ]

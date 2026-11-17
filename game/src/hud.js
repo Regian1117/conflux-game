@@ -8,11 +8,11 @@ import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
 import { BOONS } from './boons.js';
 import { chainMult, reactionGrade } from './score.js';
-import { RIFT_PLANS, upcoming } from './rifts.js';
+import { RIFT_PLANS, incomingSummary, upcoming } from './rifts.js';
 import { NODE_TYPES } from './path.js';
 import { drawBar, drawPanel, drawText, formatNumber } from './draw.js';
 import { isMuted } from './audio.js';
-import { drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
+import { GLYPH_COLORS, drawFiligree, drawGlyph, drawGlyphTile } from './glyphs.js';
 
 const BRUSH_GLYPHS = ['fire', 'water', 'earth', 'storm'];
 const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
@@ -23,7 +23,7 @@ export const PANEL_W = 224;
 const MID_X = 236;
 const MID_W = PANEL_X - 10 - MID_X;
 /** Clickable brush cards, so the mouse can pick a brush as well as keys 1-4. */
-export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: PANEL_X, y: 84 + i * 76, w: PANEL_W, h: 70 }));
+export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: PANEL_X, y: 84 + i * 62, w: PANEL_W, h: 56 }));
 
 const BRUSH_HINTS = [
   'with WATER: steam. with EARTH: lava',
@@ -137,67 +137,96 @@ function drawBrushCards(ctx, game, time) {
     }
     ctx.fillStyle = el.color;
     ctx.beginPath();
-    ctx.roundRect(card.x + 10, card.y + 10, 38, 38, 8);
+    ctx.roundRect(card.x + 10, card.y + 9, 36, 36, 8);
     ctx.fill();
-    drawText(ctx, String(i + 1), card.x + 29, card.y + 39, { size: 28, color: '#05060a', align: 'center', outline: 0 });
-    drawText(ctx, el.name, card.x + 58, card.y + 31, { size: 22, color: el.color });
-    drawGlyph(ctx, BRUSH_GLYPHS[i], card.x + card.w - 26, card.y + 26, 13, el.color, 3);
+    drawText(ctx, String(i + 1), card.x + 28, card.y + 36, { size: 26, color: '#05060a', align: 'center', outline: 0 });
+    drawText(ctx, el.name, card.x + 56, card.y + 25, { size: 20, color: el.color });
+    drawGlyph(ctx, BRUSH_GLYPHS[i], card.x + card.w - 24, card.y + 21, 12, el.color, 3);
     const essence = game.essence[i];
     const ratio = essence / game.mods.essenceMax;
-    drawBar(ctx, card.x + 58, card.y + 40, 112, 12, ratio, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
-    drawText(ctx, String(Math.floor(essence)), card.x + card.w - 10, card.y + 52, { size: 15, align: 'right', color: '#ffffff' });
-    drawText(ctx, BRUSH_HINTS[i], card.x + 10, card.y + 65, { size: 10.5, color: P.muted, weight: 700, outline: 0 });
+    drawBar(ctx, card.x + 56, card.y + 31, 114, 10, ratio, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
+    drawText(ctx, String(Math.floor(essence)), card.x + card.w - 10, card.y + 41, { size: 14, align: 'right', color: '#ffffff' });
+    drawText(ctx, BRUSH_HINTS[i], card.x + 10, card.y + 53, { size: 10, color: P.muted, weight: 700, outline: 0 });
   });
 }
 
 function drawScoreBlock(ctx, game, bests) {
-  const y = 394;
-  drawPanel(ctx, PANEL_X, y, PANEL_W, 112);
-  drawText(ctx, 'SCORE', PANEL_X + 12, y + 22, { size: 12, color: P.muted, outline: 0 });
-  drawText(ctx, formatNumber(game.score), PANEL_X + 12, y + 52, { size: 32, color: P.gold });
-  drawText(ctx, `BEST ${formatNumber(Math.max(bests.score, game.score))}`, PANEL_X + PANEL_W - 12, y + 22, { size: 12, color: P.muted, align: 'right', outline: 0 });
+  const y = 336;
+  drawPanel(ctx, PANEL_X, y, PANEL_W, 100);
+  drawText(ctx, 'SCORE', PANEL_X + 12, y + 18, { size: 12, color: P.muted, outline: 0 });
+  drawText(ctx, formatNumber(game.score), PANEL_X + 12, y + 46, { size: 29, color: P.gold });
+  drawText(ctx, `BEST ${formatNumber(Math.max(bests.score, game.score))}`, PANEL_X + PANEL_W - 12, y + 18, { size: 12, color: P.muted, align: 'right', outline: 0 });
   const chain = game.chain.count;
   const hot = chain >= 5;
-  drawText(ctx, chain > 0 ? `CHAIN x${chain}` : 'CHAIN -', PANEL_X + 12, y + 86, { size: 28, color: chain > 0 ? (hot ? '#ffe23a' : '#ffffff') : P.muted });
+  drawText(ctx, chain > 0 ? `CHAIN x${chain}` : 'CHAIN -', PANEL_X + 12, y + 77, { size: 26, color: chain > 0 ? (hot ? '#ffe23a' : '#ffffff') : P.muted });
   if (chain > 0) {
-    drawText(ctx, `score x${chainMult(chain).toFixed(1)}`, PANEL_X + PANEL_W - 12, y + 68, { size: 12, color: '#ffd9a0', align: 'right', outline: 0 });
-    drawBar(ctx, PANEL_X + 12, y + 94, PANEL_W - 24, 6, game.chain.timer / REACT.chainWindow, '#ffe23a');
+    drawText(ctx, `score x${chainMult(chain).toFixed(1)}`, PANEL_X + PANEL_W - 12, y + 60, { size: 12, color: '#ffd9a0', align: 'right', outline: 0 });
+    drawBar(ctx, PANEL_X + 12, y + 86, PANEL_W - 24, 5, game.chain.timer / REACT.chainWindow, '#ffe23a');
   }
-  drawText(ctx, `BEST x${Math.max(game.chain.best, bests.chain)}`, PANEL_X + PANEL_W - 12, y + 86, { size: 13, color: '#ffd9a0', align: 'right', outline: 2 });
+  drawText(ctx, `BEST x${Math.max(game.chain.best, bests.chain)}`, PANEL_X + PANEL_W - 12, y + 77, { size: 13, color: '#ffd9a0', align: 'right', outline: 2 });
 }
 
 /** The live reaction grade, under SCORE / CHAIN: a letter and the combo count. */
 function drawGradeBlock(ctx, game) {
-  const y = 512;
+  const y = 440;
   const count = game.chain.count;
   const grade = count >= 2 ? reactionGrade(count) : null;
   const color = grade ? GRADE_COLORS[grade] : P.muted;
-  drawPanel(ctx, PANEL_X, y, PANEL_W, 64, { edge: grade ? color : P.panelEdge, lineWidth: grade ? 3 : 2 });
-  drawText(ctx, 'REACTION GRADE', PANEL_X + 12, y + 22, { size: 12, color: P.muted, outline: 0 });
-  drawText(ctx, grade ? `x${count} combo` : 'no combo', PANEL_X + 12, y + 48, { size: 19, color: grade ? '#ffffff' : P.muted });
-  drawText(ctx, grade ?? '-', PANEL_X + PANEL_W - 40, y + 52, { size: 46, color, align: 'center' });
+  drawPanel(ctx, PANEL_X, y, PANEL_W, 50, { edge: grade ? color : P.panelEdge, lineWidth: grade ? 3 : 2 });
+  drawText(ctx, 'REACTION GRADE', PANEL_X + 12, y + 19, { size: 11, color: P.muted, outline: 0 });
+  drawText(ctx, grade ? `x${count} combo` : 'no combo', PANEL_X + 12, y + 41, { size: 17, color: grade ? '#ffffff' : P.muted });
+  drawText(ctx, grade ?? '-', PANEL_X + PANEL_W - 36, y + 42, { size: 38, color, align: 'center' });
+}
+
+/** What each creature is weak to, drawn as the weakness glyph in the threat queue. */
+const WEAKNESS = { imp: 'water', golem: 'frost', wraith: 'storm', beetle: 'fire', swarm: 'water', ram: 'lava' };
+
+/**
+ * The full threat queue: every creature kind still to come or already out this rift, with a 28 px
+ * icon, its name, how many, which side it comes from and its weakness glyph, and the NEXT line.
+ * It is built from the live rift state, so it changes as creatures spawn and die.
+ */
+function drawThreatQueue(ctx, game) {
+  const y = 496;
+  const h = 212;
+  const number = Math.min(RIFT_COUNT, game.phase === 'prep' ? game.riftNum + 1 : Math.max(1, game.riftNum));
+  drawPanel(ctx, PANEL_X, y, PANEL_W, h, { edge: '#d4aa55', lineWidth: 3 });
+  drawText(ctx, `INCOMING - RIFT ${number}`, PANEL_X + PANEL_W / 2, y + 22, { size: 16, color: '#ffd24a', align: 'center' });
+  const rows = incomingSummary(game, 6);
+  if (rows.length === 0) drawText(ctx, game.phase === 'rift' ? 'all creatures are out' : 'rift cleared', PANEL_X + PANEL_W / 2, y + 80, { size: 15, color: P.muted, align: 'center', outline: 0 });
+  rows.forEach((row, i) => {
+    const ry = y + 30 + i * 26;
+    const kind = KINDS[row.kind];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PANEL_X + 6, ry, 36, 26);
+    ctx.clip();
+    drawCreatureSprite(ctx, row.kind, PANEL_X + 24, ry + 13, row.kind === 'swarm' ? 9 : 10, 0, {});
+    ctx.restore();
+    drawText(ctx, kind.name, PANEL_X + 42, ry + 18, { size: 12.5, color: '#ffffff', weight: 800, outline: 2 });
+    drawText(ctx, `x${row.count}`, PANEL_X + 158, ry + 19, { size: 16, color: '#ffd24a', align: 'right' });
+    drawText(ctx, row.gate, PANEL_X + 163, ry + 17, { size: 10.5, color: '#ffc27a', weight: 800, outline: 2 });
+    drawGlyph(ctx, WEAKNESS[row.kind], PANEL_X + PANEL_W - 11, ry + 13, 6, GLYPH_COLORS[WEAKNESS[row.kind]], 2.4);
+  });
+  const next = upcoming(game, 1)[0];
+  const line = game.phase === 'prep' && next ? `NEXT: ${next.count} ${KINDS[next.kind].name} from ${next.gate} in ${Math.ceil(next.seconds + game.prepTimer)}s` : next ? `NEXT: ${next.count} ${KINDS[next.kind].name} from ${next.gate} in ${Math.ceil(next.seconds)}s` : 'no more creatures to spawn';
+  ctx.font = '800 100px sans-serif';
+  const fit = Math.min(12.5, ((PANEL_W - 16) / ctx.measureText(line).width) * 100);
+  drawText(ctx, line, PANEL_X + PANEL_W / 2, y + h - 9, { size: fit, color: '#ffd9a0', align: 'center', outline: 2 });
 }
 
 function drawBoonList(ctx, game) {
-  const y = 582;
-  drawPanel(ctx, PANEL_X, y, PANEL_W, H - 56 - y);
-  drawText(ctx, 'BOONS', PANEL_X + 12, y + 20, { size: 12, color: P.muted, outline: 0 });
+  const y = 712;
+  drawPanel(ctx, PANEL_X, y, PANEL_W, 36);
   const held = BOONS.filter((b) => game.boons[b.id]);
-  if (held.length === 0) {
-    drawText(ctx, 'none yet', PANEL_X + 12, y + 48, { size: 16, color: P.muted, outline: 0 });
-    drawText(ctx, 'pick 1 of 3 after each rift', PANEL_X + 12, y + 68, { size: 12, color: P.muted, weight: 700, outline: 0 });
-  }
-  held.slice(0, 6).forEach((b, i) => {
-    const row = y + 28 + i * 22;
-    drawGlyphTile(ctx, b.glyph, PANEL_X + 22, row + 9, 20, b.color);
-    drawText(ctx, `${b.name}${game.boons[b.id] > 1 ? ` x${game.boons[b.id]}` : ''}`, PANEL_X + 38, row + 14, { size: 14, color: '#ffffff', outline: 2 });
-  });
+  if (held.length === 0) drawText(ctx, 'boons: pick 1 of 3 after each rift', PANEL_X + 10, y + 23, { size: 11.5, color: P.muted, weight: 700, outline: 0 });
+  held.slice(0, 7).forEach((b, i) => drawGlyphTile(ctx, b.glyph, PANEL_X + 20 + i * 29, y + 18, 25, b.color));
 }
 
 function drawTip(ctx, game) {
   if (!game.tip) return;
   const a = Math.min(1, game.tip.timer);
-  const x = FIELD.x + (FIELD.w - 700) / 2;
+  const x = FIELD.x + FIELD.w - 700 - 8;
   ctx.globalAlpha = a;
   drawPanel(ctx, x, FIELD.y + 8, 700, 36, { fill: 'rgba(8,10,16,0.88)', edge: '#ffd24a' });
   drawCreatureSprite(ctx, game.tip.kind, x + 28, FIELD.y + 26, 10, 0, {});
@@ -205,22 +234,26 @@ function drawTip(ctx, game) {
   ctx.globalAlpha = 1;
 }
 
-/** The goal banner beside the rift counter: how to win and how to lose, large on a dark plate. */
+/** The goal banner under the rift counter: how to win (green) and how to lose (red). */
 function drawGoalBanner(ctx) {
-  const x = 236;
-  const w = 336;
-  drawPanel(ctx, x, 8, w, 68, { fill: '#050608', edge: '#d4aa55', lineWidth: 3 });
-  const lines = [['WIN: seal 7 rifts + slay the Colossus', P.good], ['LOSE: the Core shatters', '#ff5a6a']];
-  lines.forEach(([text, color], i) => {
-    ctx.font = `900 100px ${'sans-serif'}`;
-    const fit = Math.min(i === 0 ? 19 : 22, ((w - 28) / ctx.measureText(text).width) * 100);
-    drawText(ctx, text, x + w / 2, 36 + i * 28, { size: fit, color, align: 'center', outline: 3 });
-  });
+  const x = FIELD.x + 4;
+  const y = FIELD.y + 4;
+  ctx.beginPath();
+  ctx.roundRect(x, y, 372, 54, 8);
+  ctx.fillStyle = 'rgba(4,5,8,0.93)';
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#d4aa55';
+  ctx.stroke();
+  drawText(ctx, 'WIN: seal 7 rifts + slay the Colossus', x + 186, y + 23, { size: 19, color: P.good, align: 'center', weight: 900, outline: 3 });
+  drawText(ctx, 'LOSE: the Core shatters', x + 186, y + 46, { size: 19, color: '#ff5a6a', align: 'center', weight: 900, outline: 3 });
 }
 
 /** Gold filigree corners over every HUD panel. */
 function drawFrames(ctx, game) {
-  const frames = [[12, 8, 214, 68], [236, 8, 336, 68], [582, 8, MID_X + MID_W - 582, 68], [PANEL_X, 8, PANEL_W, 68], ...BRUSH_CARDS.map((c) => [c.x, c.y, c.w, c.h]), [PANEL_X, 394, PANEL_W, 112], [PANEL_X, 512, PANEL_W, 64], [PANEL_X, 582, PANEL_W, H - 56 - 582]];
+  const midW = game.boss ? 720 - MID_X - 0 : MID_W;
+  const frames = [[12, 8, 214, 68], [MID_X, 8, game.boss ? 480 : midW, 68], [PANEL_X, 8, PANEL_W, 68], ...BRUSH_CARDS.map((c) => [c.x, c.y, c.w, c.h]), [PANEL_X, 336, PANEL_W, 100], [PANEL_X, 440, PANEL_W, 50], [PANEL_X, 496, PANEL_W, 212], [PANEL_X, 712, PANEL_W, 36]];
+  if (game.boss) frames.push([726, 8, MID_X + MID_W - 726, 68]);
   for (const [x, y, w, h] of frames) drawFiligree(ctx, x + 1, y + 1, w - 2, h - 2);
 }
 
@@ -267,14 +300,17 @@ export function drawKeyBar(ctx) {
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
   drawRiftBlock(ctx, game);
-  drawGoalBanner(ctx);
-  if (game.boss) drawBossPanel(ctx, game.boss, time, 582, MID_X + MID_W - 582);
-  else drawQueue(ctx, game, time, 582, MID_X + MID_W - 582);
+  if (game.boss) {
+    drawBossPanel(ctx, game.boss, time, MID_X, 480);
+    drawQueue(ctx, game, time, 726, MID_X + MID_W - 726);
+  } else drawQueue(ctx, game, time, MID_X, MID_W);
   drawCoreBlock(ctx, game);
   drawBrushCards(ctx, game, time);
   drawScoreBlock(ctx, game, bests);
   drawGradeBlock(ctx, game);
+  drawThreatQueue(ctx, game);
   drawBoonList(ctx, game);
+  drawGoalBanner(ctx);
   drawTip(ctx, game);
   drawFrames(ctx, game);
   drawKeyBar(ctx);

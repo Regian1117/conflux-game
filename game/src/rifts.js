@@ -126,4 +126,30 @@ export function upcoming(game, limit = 6) {
   return out.slice(0, limit);
 }
 
+/**
+ * The full threat queue: every kind still to spawn this rift plus every kind already on the field,
+ * as [{kind, count, gate}] (gate = where most of them come from), biggest groups first, at most `limit`.
+ */
+export function incomingSummary(game, limit = 6) {
+  let pending = [];
+  if (game.phase === 'prep') {
+    upcoming(game, 1);
+    pending = game.preview ? game.preview.spawns : [];
+  } else if (game.rift) pending = game.rift.spawns.slice(game.rift.next);
+  const tally = new Map();
+  const add = (kind, gateKey) => {
+    if (kind === 'colossus') return;
+    const entry = tally.get(kind) ?? { kind, count: 0, gates: {} };
+    entry.count += 1;
+    entry.gates[gateKey] = (entry.gates[gateKey] ?? 0) + 1;
+    tally.set(kind, entry);
+  };
+  for (const s of pending) add(s.kind, s.gate);
+  for (const c of game.creatures) if (!c.dead) add(c.kind, c.gate);
+  return [...tally.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((e) => ({ kind: e.kind, count: e.count, gate: GATES[Object.entries(e.gates).sort((a, b) => b[1] - a[1])[0][0]].name }));
+}
+
 export const riftCount = () => RIFT_COUNT;
