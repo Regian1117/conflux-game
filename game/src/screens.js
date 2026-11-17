@@ -8,7 +8,7 @@ import { drawFiligree, drawGlyph } from './glyphs.js';
 import { RARITY } from './boons.js';
 
 /** The three boon cards, left to right (also used for mouse hit tests). */
-export const BOON_CARDS = [0, 1, 2].map((i) => ({ x: 42 + i * 310, y: FIELD.y + 118, w: 290, h: 400 }));
+export const BOON_CARDS = [0, 1, 2].map((i) => ({ x: 77 + i * 310, y: FIELD.y + 118, w: 290, h: 400 }));
 
 export function boonCardAt(x, y) {
   return BOON_CARDS.findIndex((c) => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h);

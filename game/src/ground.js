@@ -128,6 +128,41 @@ function rubble(g, rng) {
   }
 }
 
+/** Subtle engraved alchemical glyphs and rune circles cut into the stone. */
+function engravedRunes(g, rng) {
+  const kinds = ['fire', 'water', 'earth', 'storm'];
+  for (let n = 0; n < 60; n += 1) {
+    const x = rng.range(20, FIELD.w - 20);
+    const y = rng.range(20, FIELD.h - 20);
+    const s = rng.range(7, 14);
+    const kind = kinds[n % 4];
+    drawGlyph(g, kind, x + 1, y + 1.6, s, 'rgba(0,0,0,0.6)', 3.4);
+    drawGlyph(g, kind, x, y, s, 'rgba(150,160,215,0.2)', 1.6);
+  }
+  for (let n = 0; n < 12; n += 1) {
+    const x = rng.range(60, FIELD.w - 60);
+    const y = rng.range(60, FIELD.h - 60);
+    const r = rng.range(24, 44);
+    for (const [color, width, off] of [['rgba(0,0,0,0.55)', 3.4, 1.4], ['rgba(150,160,215,0.18)', 1.4, 0]]) {
+      g.strokeStyle = color;
+      g.lineWidth = width;
+      g.beginPath();
+      g.arc(x + off, y + off, r, 0, 6.283);
+      g.stroke();
+      g.beginPath();
+      g.arc(x + off, y + off, r * 0.7, 0, 6.283);
+      g.stroke();
+      for (let k = 0; k < 16; k += 1) {
+        const a = (k / 16) * 6.283;
+        g.beginPath();
+        g.moveTo(x + off + Math.cos(a) * r, y + off + Math.sin(a) * r);
+        g.lineTo(x + off + Math.cos(a) * (r + 6), y + off + Math.sin(a) * (r + 6));
+        g.stroke();
+      }
+    }
+  }
+}
+
 function scorches(g, rng) {
   for (let n = 0; n < 22; n += 1) {
     const x = rng.range(0, FIELD.w);
@@ -235,6 +270,7 @@ export function getGround() {
   cracks(g, rng);
   veins(g, rng);
   rubble(g, rng);
+  engravedRunes(g, rng);
   landmarks(g);
   vignette(g);
   return ground;

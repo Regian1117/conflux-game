@@ -11,7 +11,7 @@ import { setCell, toScreenX, toScreenY } from './grid.js';
 import { offerBoons, takeBoon } from './boons.js';
 import { damageCreature, spawnCreature } from './creatures.js';
 import { reactNow } from './reactions.js';
-import { addBolt, addText, burst, updateFx } from './particles.js';
+import { addBolt, burst, updateFx } from './particles.js';
 
 const BOON_PREFERENCE = ['frost', 'wide', 'arc', 'overflow', 'shield', 'slowdecay', 'siphon', 'lava', 'mend'];
 const IDLE = () => ({ queue: [], stroke: null, cooldown: 99, progress: 0, flip: 0 });
@@ -45,7 +45,7 @@ function blob(game, type, cx, cy, rx, ry, density = 1) {
       const dx = (col + 0.5 - cx) / rx;
       const dy = (row + 0.5 - cy) / ry;
       if (dx * dx + dy * dy > 1 || col < 1 || row < 1 || col > COLS - 2 || row > ROWS - 2) continue;
-      if (Math.abs(col - 24) <= 1 && Math.abs(row - 17) <= 1) continue;
+      if (Math.abs(col - 25) <= 1 && Math.abs(row - 16) <= 1) continue;
       if (game.rng.chance(density)) setCell(game.grid, col, row, type, 1.8);
     }
   }
@@ -91,8 +91,8 @@ function stageCover(seed) {
   game.score = 48250;
   advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
   const boss = game.boss;
-  const BOSS_X = 24.5;
-  const BOSS_Y = 11.9;
+  const BOSS_X = 25.5;
+  const BOSS_Y = 10.9;
   if (boss) {
     boss.x = BOSS_X;
     boss.y = BOSS_Y;
@@ -100,20 +100,21 @@ function stageCover(seed) {
   game.grid.type.fill(0);
   game.creatures = game.creatures.filter((c) => c === boss);
   // Kept readable on purpose: a lava river down the west, an ice field in the east and charged
-  // water along the south, with clear ground round the Colossus, the Core and the brush cursor.
-  river(game, LAVA, 7, 1, 9, 32, 4.2, 2.4);
-  blob(game, LAVA, 3.5, 11, 2.4, 3);
-  blob(game, ICE, 40, 12, 7.5, 7.5);
-  blob(game, ICE, 41, 27, 5.5, 4);
-  river(game, CHARGED, 13, 28.5, 34, 28, 2.4, 1.4);
-  blob(game, CLOUD, 14, 4, 3, 1.4);
-  blob(game, STEAM, 14, 12, 2.6, 1.6);
+  // water along the south, with clear ground round the Colossus, the Core and the callout.
+  river(game, LAVA, 8, 1, 10, 31, 4.2, 2.4);
+  blob(game, LAVA, 4, 12, 2.4, 3);
+  blob(game, ICE, 43, 12, 8, 8);
+  blob(game, ICE, 44, 27, 6, 4.4);
+  river(game, CHARGED, 14, 29.5, 38, 29, 2.4, 1.4);
+  blob(game, CLOUD, 15, 4, 3, 1.4);
+  blob(game, STEAM, 14, 13, 2.6, 1.6);
   blob(game, EARTH, 3, 30, 1.8, 2.2);
-  // Fourteen creatures of every kind, spread out: none under the Colossus, the Core or the cursor.
+  // Thirteen creatures of every kind, spread out: none under the Colossus, the Core, the
+  // callout or the cursor.
   const crowd = [
-    ['golem', 'W', 14.5, 8], ['ram', 'W', 14, 27], ['imp', 'W', 13, 19], ['wraith', 'N', 12, 14.5], ['wraith', 'N', 30.5, 7],
-    ['beetle', 'S', 34.2, 23.2], ['imp', 'E', 38.5, 19], ['golem', 'E', 43, 9], ['wraith', 'E', 44, 24], ['ram', 'E', 36, 29.5],
-    ['swarm', 'W', 20.5, 25], ['swarm', 'W', 22.8, 26.4], ['swarm', 'W', 26, 24.6], ['imp', 'E', 31.5, 15],
+    ['golem', 'W', 14.5, 8], ['imp', 'W', 13, 19], ['wraith', 'N', 11.5, 14.5], ['wraith', 'N', 37, 7], ['ram', 'E', 36, 25.5],
+    ['beetle', 'S', 35, 19.5], ['imp', 'E', 36.5, 14], ['golem', 'E', 45, 8], ['wraith', 'E', 47.5, 24.5], ['ram', 'E', 40, 31],
+    ['swarm', 'S', 22.5, 27.3], ['swarm', 'S', 24.5, 27.9], ['swarm', 'S', 26.5, 27.2],
   ];
   for (const [kind, gate, x, y] of crowd) place(game, kind, gate, x, y);
   game.core.hp = 74;
@@ -130,8 +131,8 @@ function stageCover(seed) {
     boss.flash = 0;
     boss.stompTimer = 6;
   }
-  // Two bursts of sparks, real particles, away from the focal points.
-  for (const [x, y, kind] of [[13, 21, 'spark'], [35, 24, 'zap']]) burst(game.fx, kind, toScreenX(x), toScreenY(y), 16);
+  // Two small bursts of sparks, real particles, away from the focal points.
+  for (const [x, y, kind] of [[12, 22, 'spark'], [39, 23, 'zap']]) burst(game.fx, kind, toScreenX(x), toScreenY(y), 14);
   // A last chain lands through the game's own reaction path: only STORMSTEAM and LAVA are new
   // to it, so it reads CHAIN x7. Its callout is then set at the lower left,
   // slightly angled, over the lava river and clear of the Colossus, the Core and the boss panel.
@@ -149,8 +150,8 @@ function stageCover(seed) {
   game.fx.parts.length = Math.min(game.fx.parts.length, 160);
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
-    callout.x = 352;
-    callout.y = toScreenY(23.4);
+    callout.x = 345;
+    callout.y = toScreenY(23.6);
     callout.size = 38;
     callout.angle = -0.09;
     callout.life = callout.max = 3;
@@ -162,11 +163,8 @@ function stageCover(seed) {
   }
   for (let n = 0; n < 5; n += 1) updateFx(game.fx, STEP);
   game.fx.texts = game.fx.texts.filter((t) => t.text.startsWith('CHAIN'));
-  // Two big, clean feedback popups, well apart: a shatter on the frozen imp and an overload on the charged water.
-  addText(game.fx, toScreenX(38.5), toScreenY(16.6), 'SHATTER!', { color: '#dff6ff', size: 40, life: 3, vy: -2, angle: 0.05 });
-  addText(game.fx, toScreenX(25), toScreenY(26.2), 'OVERLOAD!', { color: '#ffe23a', size: 40, life: 3, vy: -2, angle: -0.04 });
   game.brush = 3;
-  setCursor(game, toScreenX(31), toScreenY(19), false);
+  setCursor(game, toScreenX(30.5), toScreenY(18.5), false);
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }
 

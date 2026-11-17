@@ -150,7 +150,7 @@ export function drawTitle(ctx, time, difficulty, hit) {
   ctx.roundRect(b.x, b.y, b.w, b.h, 22);
   ctx.stroke();
   drawText(ctx, 'CLICK TO START', b.x + b.w / 2, b.y + 76, { size: 68, color: '#1a0c00', align: 'center', outline: 0 });
-  ctx.fillStyle = 'rgba(4,5,9,0.92)';
-  ctx.fillRect(0, H - 34, W, 34);
-  drawText(ctx, 'hold the mouse to paint  -  keys 1-4 pick the brush  -  Space opens a rift  -  [H] help', W / 2, 786, { size: 15, color: '#aab4cc', align: 'center', outline: 0 });
+  ctx.fillStyle = 'rgba(4,5,9,0.96)';
+  ctx.fillRect(0, H - 48, W, 48);
+  drawText(ctx, 'hold the mouse to paint  -  keys 1-4 pick the brush  -  Space opens a rift  -  [H] help', W / 2, H - 18, { size: 15, color: '#aab4cc', align: 'center', outline: 0 });
 }
