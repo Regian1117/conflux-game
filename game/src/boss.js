@@ -10,7 +10,7 @@ import { addScore, damageCore } from './score.js';
 import { sfx } from './audio.js';
 
 /** How close (in cells) a reaction must be to the Colossus to count against it. */
-const REACH = 8;
+const REACH = 9;
 const EXPOSED_SECONDS = 12;
 const STOMP_EVERY = 9;
 
@@ -19,6 +19,7 @@ export function spawnColossus(game, gateKey) {
   if (!boss) return null;
   boss.hp = Math.round(boss.hp * (game.mods.bossHpMul ?? 1));
   boss.maxHp = boss.hp;
+  boss.plateT = [];
   game.boss = boss;
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 180, 'THE HOLLOW COLOSSUS', { color: '#c58aff', size: 52, life: 2.6, vy: -8, pop: 0.4 });
   addText(game.fx, FIELD.x + FIELD.w / 2, FIELD.y + 226, 'Break its plates in order', { color: '#ffffff', size: 26, life: 2.6, vy: -8 });
@@ -45,6 +46,7 @@ export function noteReaction(game, name, x, y) {
   }
   const plate = PLATES[boss.plates];
   if (!plate || plate.need !== reaction) return;
+  boss.plateT[boss.plates] = boss.age;
   boss.plates += 1;
   burst(game.fx, 'shard', px, py, 26, [plate.color, '#ffffff']);
   burst(game.fx, 'spark', px, py, 20, [plate.color, '#ffffff']);
@@ -54,9 +56,9 @@ export function noteReaction(game, name, x, y) {
   addScore(game, 400);
   if (boss.plates >= PLATES.length) {
     boss.exposed = EXPOSED_SECONDS;
-    addText(game.fx, px, py - 70, 'EXPOSED! HIT IT!', { color: '#ffd24a', size: 44, life: 2, pop: 0.4 });
+    addText(game.fx, px, py - 170, 'EXPOSED! HIT IT!', { color: '#ffd24a', size: 44, life: 2, pop: 0.4 });
   } else {
-    addText(game.fx, px, py - 70, `PLATE ${boss.plates} BROKEN!`, { color: plate.color, size: 36, life: 1.6, pop: 0.4 });
+    addText(game.fx, px, py - 170, `PLATE ${boss.plates} BROKEN!`, { color: plate.color, size: 36, life: 1.6, pop: 0.4 });
   }
 }
 
@@ -69,7 +71,8 @@ export function updateBoss(game, dt) {
     boss.exposed -= dt;
     if (boss.exposed <= 0) {
       boss.plates = 0;
-      addText(game.fx, toScreenX(boss.x), toScreenY(boss.y) - 70, 'ARMOUR REFORMS', { color: '#c58aff', size: 34, life: 1.6, pop: 0.3 });
+      boss.plateT = [];
+      addText(game.fx, toScreenX(boss.x), toScreenY(boss.y) - 170, 'ARMOUR REFORMS', { color: '#c58aff', size: 34, life: 1.6, pop: 0.3 });
       addShake(game.fx, 6);
     }
   }
@@ -78,13 +81,13 @@ export function updateBoss(game, dt) {
   if (boss.stompTimer <= 0) {
     boss.stompTimer = STOMP_EVERY;
     boss.stompWarn = 0;
-    const wiped = clearRadius(game.grid, boss.x, boss.y, 5.2);
+    const wiped = clearRadius(game.grid, boss.x, boss.y, 6.6);
     burst(game.fx, 'dust', toScreenX(boss.x), toScreenY(boss.y), 40);
     addShake(game.fx, 13);
-    addText(game.fx, toScreenX(boss.x), toScreenY(boss.y) - 70, wiped > 0 ? 'STOMP!' : 'STOMP', { color: '#ff8a5a', size: 36, life: 1.2, pop: 0.3 });
+    addText(game.fx, toScreenX(boss.x), toScreenY(boss.y) - 170, wiped > 0 ? 'STOMP!' : 'STOMP', { color: '#ff8a5a', size: 36, life: 1.2, pop: 0.3 });
     sfx.coreHit();
   }
-  if (Math.hypot(boss.x - CORE.col - 0.5, boss.y - CORE.row - 0.5) < 3.8) {
+  if (Math.hypot(boss.x - CORE.col - 0.5, boss.y - CORE.row - 0.5) < 5.2) {
     boss.crushTimer -= dt;
     if (boss.crushTimer <= 0) {
       boss.crushTimer = 1.6;
@@ -97,12 +100,12 @@ export function updateBoss(game, dt) {
 export function drawBossWarning(ctx, game) {
   const boss = game.boss;
   if (!boss || boss.stompWarn <= 0) return;
-  const radius = 5.2 * CELL * Math.min(1, boss.stompWarn / 1.1);
+  const radius = 6.6 * CELL * Math.min(1, boss.stompWarn / 1.1);
   ctx.strokeStyle = `rgba(255,90,60,${0.4 + 0.5 * Math.min(1, boss.stompWarn)})`;
   ctx.lineWidth = 4;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
-  ctx.arc(toScreenX(boss.x), toScreenY(boss.y), 5.2 * CELL, 0, Math.PI * 2);
+  ctx.arc(toScreenX(boss.x), toScreenY(boss.y), 6.6 * CELL, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.strokeStyle = 'rgba(255,90,60,0.7)';

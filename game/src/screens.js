@@ -1,11 +1,12 @@
 // Full-screen overlays drawn over the running scene: title, how-to-play card, boon pick, pause,
 // win ("CONFLUX MASTERED") and lose ("THE CORE SHATTERS"). Each is a pure function of the game
 // state, so the screenshot mode can paint any of them.
-import { FIELD, FONT, H, PALETTE as P, RIFT_COUNT, W } from './config.js';
+import { FIELD, FONT, H, PALETTE as P, PLATES, RIFT_COUNT, W } from './config.js';
 import { BRUSHES, ELEMENTS } from './elements.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
 import { drawPanel, drawText, formatNumber } from './draw.js';
+import { drawColossus } from './colossus.js';
 
 /** The three boon cards, left to right (also used for mouse hit tests). */
 export const BOON_CARDS = [0, 1, 2].map((i) => ({ x: 62 + i * 290, y: FIELD.y + 118, w: 270, h: 330 }));
@@ -110,7 +111,7 @@ export function drawHelp(ctx, time) {
 }
 
 export function drawBoonPick(ctx, game, hover, time) {
-  dim(ctx, 0.76, false);
+  dim(ctx, 0.5, false);
   drawText(ctx, `RIFT ${game.riftNum} CLEARED`, FIELD.x + FIELD.w / 2, FIELD.y + 56, { size: 50, color: '#6dffb0', align: 'center' });
   drawText(ctx, 'CHOOSE A BOON  -  press 1, 2 or 3, or click a card', FIELD.x + FIELD.w / 2, FIELD.y + 92, { size: 24, color: '#ffffff', align: 'center' });
   game.offer.forEach((boon, i) => {
@@ -151,14 +152,62 @@ function drawKillRow(ctx, game, y, time) {
   const width = kinds.length * 118;
   kinds.forEach((id, i) => {
     const x = W / 2 - width / 2 + i * 118 + 59;
-    drawCreatureSprite(ctx, id, x - 22, y, id === 'colossus' ? 13 : 13, time, {});
+    drawCreatureSprite(ctx, id, x - 22, y, id === 'colossus' ? 5 : 13, time, {});
     drawText(ctx, `x${game.stats.byKind[id]}`, x + 8, y + 7, { size: 22, color: '#ffffff' });
   });
 }
 
+/** The dead Colossus, a dark cracked husk under rising light, drawn behind the win results. */
+function drawVictoryBackdrop(ctx, time) {
+  ctx.fillStyle = '#07080d';
+  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 7; k += 1) {
+    const x = 120 + k * 120 + Math.sin(time + k) * 12;
+    const beam = ctx.createLinearGradient(x, 700, x, 80);
+    beam.addColorStop(0, 'rgba(255,210,120,0.28)');
+    beam.addColorStop(1, 'rgba(255,210,120,0)');
+    ctx.fillStyle = beam;
+    ctx.fillRect(x - 26, 80, 52, 620);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.save();
+  ctx.translate(W / 2 - 150, 430);
+  drawColossus(ctx, 100, time, { ruin: true, plates: 4 });
+  ctx.restore();
+  for (let k = 0; k < 16; k += 1) {
+    const x = 80 + ((k * 331) % 760);
+    const y = 560 + ((k * 97) % 110);
+    const color = PLATES[k % 4].color;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 9);
+    ctx.lineTo(x + 13, y + 6);
+    ctx.lineTo(x - 9, y + 8);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(x - 14, y - 14, 28, 28);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 40; k += 1) {
+    const x = 60 + ((k * 197) % 900);
+    const y = 690 - ((time * 40 + k * 53) % 600);
+    ctx.fillStyle = k % 2 ? '#ffd24a' : '#ffffff';
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(x, y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 /** The end screens share a layout; `won` picks the words and colours. */
 export function drawEnd(ctx, game, bests, won, time) {
-  dim(ctx, won ? 0.76 : 0.78);
+  if (won) drawVictoryBackdrop(ctx, time);
+  dim(ctx, won ? 0.34 : 0.78);
   const color = won ? '#ffd24a' : '#ff4a5e';
   if (won) {
     drawText(ctx, 'CONFLUX MASTERED', W / 2, 205, { size: 92, color, align: 'center' });

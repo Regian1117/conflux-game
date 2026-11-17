@@ -1,8 +1,18 @@
 // Procedural creature art, drawn with canvas paths: nothing is loaded. Used on the battlefield and,
 // at small sizes, for the incoming-queue icons in the HUD. `st` is the creature (or {}).
-import { PLATES } from './config.js';
+import { drawColossus } from './colossus.js';
 
 const TAU = Math.PI * 2;
+
+/** Each creature's element-coloured glow. */
+const GLOW_COLORS = {
+  imp: 'rgba(255,90,30,0.4)',
+  golem: 'rgba(160,200,70,0.28)',
+  wraith: 'rgba(170,110,255,0.45)',
+  beetle: 'rgba(255,230,60,0.4)',
+  swarm: 'rgba(255,140,40,0.4)',
+  ram: 'rgba(150,190,255,0.3)',
+};
 
 function circle(ctx, x, y, r) {
   ctx.beginPath();
@@ -154,62 +164,6 @@ const painters = {
   },
 };
 
-function drawColossus(ctx, r, t, st) {
-  const broken = st.plates ?? 0;
-  const exposed = (st.exposed ?? 0) > 0;
-  const aura = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 1.7);
-  aura.addColorStop(0, exposed ? 'rgba(255,150,40,0.55)' : 'rgba(166,92,255,0.45)');
-  aura.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = aura;
-  circle(ctx, 0, 0, r * 1.7);
-  ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.beginPath();
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * TAU + TAU / 16;
-    ctx[i === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
-  }
-  ctx.closePath();
-  outlined(ctx, st.flash > 0 ? '#ffffff' : '#2a3050', '#d9c8ff', 4);
-  ctx.strokeStyle = 'rgba(217,200,255,0.35)';
-  ctx.lineWidth = 2;
-  for (const k of [0.62, 0.45]) {
-    circle(ctx, 0, 0, r * k);
-    ctx.stroke();
-  }
-  ctx.fillStyle = '#05060a';
-  circle(ctx, 0, 0, r * 0.3);
-  ctx.fill();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = exposed ? `rgba(255,140,40,${0.7 + Math.sin(t * 10) * 0.2})` : 'rgba(166,92,255,0.55)';
-  circle(ctx, 0, 0, r * 0.2);
-  ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = exposed ? '#ffd24a' : '#e3d4ff';
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.42, -r * 0.5, r * 0.14, r * 0.07, side * 0.3, 0, TAU);
-    ctx.fill();
-  }
-  // The four armour plates ring the body: an unbroken plate glows in the colour of the reaction
-  // that breaks it, the next one to break pulses, a broken one is a dark gap.
-  for (let i = 0; i < PLATES.length; i += 1) {
-    const a0 = (i / 4) * TAU - TAU / 8 + 0.1;
-    const a1 = ((i + 1) / 4) * TAU - TAU / 8 - 0.1;
-    const isBroken = i < broken;
-    const isCurrent = i === broken && !exposed;
-    ctx.lineCap = 'butt';
-    ctx.lineWidth = isBroken ? r * 0.07 : r * 0.24;
-    ctx.strokeStyle = isBroken ? 'rgba(90,90,120,0.6)' : PLATES[i].color;
-    ctx.globalAlpha = isBroken ? 0.7 : isCurrent ? 0.8 + Math.sin(t * 8) * 0.2 : 0.7;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.06, a0, a1);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-}
-
 /**
  * Draw creature `kindId` centred at canvas pixel (x, y) with body radius `r` pixels.
  * `t` is time in seconds for animation; `st` carries flash, frozen, charge, plates, exposed.
@@ -219,10 +173,19 @@ export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
   const c = (color) => (flashing ? '#ffffff' : color);
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(0, r * 0.9, r * 0.9, r * 0.28, 0, 0, TAU);
-  ctx.fill();
+  if (kindId !== 'colossus') {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.95, r * 1.0, r * 0.3, 0, 0, TAU);
+    ctx.fill();
+    const glow = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 2);
+    glow.addColorStop(0, GLOW_COLORS[kindId]);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = glow;
+    ctx.fillRect(-r * 2, -r * 2, r * 4, r * 4);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (kindId === 'colossus') drawColossus(ctx, r, t, st);
   else {
     const bob = kindId === 'golem' || kindId === 'ram' ? Math.sin(t * 6) * r * 0.05 : Math.sin(t * 9) * r * 0.08;

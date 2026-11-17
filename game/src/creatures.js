@@ -21,10 +21,19 @@ export const KINDS = {
   beetle: { name: 'Spark Beetle', plural: 'Spark Beetles', hp: 50, speed: 2.1, r: 0.65, core: 8, pts: 100, mul: { fire: 1.4, storm: 0 }, tip: 'Charges near storm, then explodes. Burn it first.' },
   swarm: { name: 'Ember Swarm', plural: 'Ember Swarm', hp: 15, speed: 2.8, r: 0.45, core: 2, pts: 18, mul: { fire: 0.3, water: 1.6, storm: 1.5 }, tip: 'Dozens of tiny embers. Chain them.' },
   ram: { name: 'Stone Ram', plural: 'Stone Rams', hp: 170, speed: 1.6, r: 0.9, core: 9, pts: 140, smash: true, mul: { fire: 0.4, lava: 1.5 }, tip: 'Smashes earth walls. Lava melts it.' },
-  colossus: { name: 'Hollow Colossus', plural: 'Hollow Colossus', hp: 1300, speed: 0.55, r: 3.2, core: 35, pts: 3000, straight: true, noFreeze: true, boss: true, mul: {}, tip: 'Break its armour plates in order.' },
+  colossus: { name: 'Hollow Colossus', plural: 'Hollow Colossus', hp: 1300, speed: 0.55, r: 4.2, core: 35, pts: 3000, straight: true, noFreeze: true, boss: true, mul: {}, tip: 'Break its armour plates in order.' },
 };
 
 const dir = { x: 0, y: 0 };
+const DEATH_COLORS = {
+  imp: ['#ff5a1f', '#ffb347', '#ffe27a'],
+  golem: ['#8a6a3a', '#6aa23a', '#c9a36a'],
+  wraith: ['#c58aff', '#ffffff', '#8f5cff'],
+  beetle: ['#ffe23a', '#ffffff', '#ffa43a'],
+  swarm: ['#ff7a2a', '#ffd24a'],
+  ram: ['#aab4cc', '#e8dcc0', '#ff6a3a'],
+  colossus: ['#c58aff', '#ffd24a', '#ffffff', '#ff6a1f'],
+};
 
 /** Walk out of a rift gate; returns the new creature (also pushed to game.creatures). */
 export function spawnCreature(game, kindId, gateKey, hpMul = 1) {
@@ -100,7 +109,9 @@ function killCreature(game, c) {
   const gain = (1.5 + kind.pts / 22) * (1 + (game.mods.siphon ?? 0));
   for (let i = 0; i < 4; i += 1) game.essence[i] = Math.min(game.mods.essenceMax, game.essence[i] + gain);
   const shatter = c.frozen > 0;
-  burst(game.fx, shatter ? 'shard' : 'blood', px, py, kind.boss ? 80 : shatter ? 18 : 10, shatter ? undefined : kind.mul.fire === 0 ? ['#ff5a1f', '#ffb347'] : undefined);
+  const palette = DEATH_COLORS[c.kind];
+  burst(game.fx, shatter ? 'shard' : 'spark', px, py, kind.boss ? 80 : shatter ? 18 : 16, shatter ? undefined : palette);
+  burst(game.fx, 'ember', px, py, kind.boss ? 40 : 8, palette);
   burst(game.fx, 'spark', px, py, kind.boss ? 50 : 6);
   if (shatter) addText(game.fx, px, py - 30, 'SHATTERED!', { color: '#dff6ff', size: 24, life: 1.2 });
   addShake(game.fx, kind.boss ? 14 : kind.hp > 150 ? 5 : 1.5);
@@ -314,13 +325,14 @@ export function drawCreatures(ctx, game, time) {
     const kind = KINDS[c.kind];
     const px = toScreenX(c.x);
     const py = toScreenY(c.y);
-    drawCreatureSprite(ctx, c.kind, px, py, kind.r * CELL, time + c.id, c);
+    drawCreatureSprite(ctx, c.kind, px, py, kind.boss ? kind.r * CELL : kind.r * CELL * 1.55, time + c.id, c);
     if (c.hp < c.maxHp && !kind.boss) {
-      const w = Math.max(18, kind.r * CELL * 2);
+      const w = Math.max(22, kind.r * CELL * 2.6);
+      const top = py - kind.r * CELL * 1.55 - 12;
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(px - w / 2 - 1, py - kind.r * CELL - 11, w + 2, 6);
+      ctx.fillRect(px - w / 2 - 1, top, w + 2, 6);
       ctx.fillStyle = c.hp / c.maxHp > 0.4 ? '#6dffb0' : '#ff5a6a';
-      ctx.fillRect(px - w / 2, py - kind.r * CELL - 10, w * (c.hp / c.maxHp), 4);
+      ctx.fillRect(px - w / 2, top + 1, w * (c.hp / c.maxHp), 4);
     }
   }
 }
