@@ -632,10 +632,16 @@ export function drawMaterials(ctx, game, time) {
     g.fillRect(0, 0, FIELD.w, FIELD.h);
     DETAILS[type](g, cells, time);
     EXTRAS[type]?.(g, cells, time);
-    etchGlyphs(g, grid, type, cells);
+    if (type !== FIRE && type !== STORM && type !== CLOUD) {
+      g.globalAlpha = 0.34;
+      g.fillStyle = GLOW[type]?.[0] ?? RIMS[type];
+      g.fillRect(0, 0, FIELD.w, FIELD.h);
+      g.globalAlpha = 1;
+    }
     g.globalCompositeOperation = 'destination-in';
     g.drawImage(entry.mask, 0, 0);
     g.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.93;
     ctx.drawImage(layer, FIELD.x, FIELD.y);
     ctx.globalAlpha = 0.9;
     ctx.drawImage(entry.rim, FIELD.x, FIELD.y);

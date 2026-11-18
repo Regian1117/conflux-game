@@ -260,8 +260,8 @@ export function getGround() {
   const g = ground.getContext('2d');
   const rng = createRandom(20260117);
   const base = g.createLinearGradient(0, 0, FIELD.w, FIELD.h);
-  base.addColorStop(0, '#181c29');
-  base.addColorStop(1, '#0e1119');
+  base.addColorStop(0, '#141c34');
+  base.addColorStop(1, '#0b1122');
   g.fillStyle = base;
   g.fillRect(0, 0, FIELD.w, FIELD.h);
   stonePlates(g, rng);

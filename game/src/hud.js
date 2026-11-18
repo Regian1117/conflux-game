@@ -1,19 +1,18 @@
 // The in-game interface as thin translucent overlays at the screen edges, over a full-bleed field.
 // Top strip: rift counter, the goal, the boss bar with its plate order (or the incoming creatures),
-// Core health and score. Right edge: the threat queue (icon, count, side, weakness) and the boons
-// held as glyph icons. Bottom strip: the spell bar (four element slots with glyph, keycap, essence
+// Core health and score, with the threat queue as one row of six creature icons with counts (the
+// boons are shown on the Rift Path screen). Bottom strip: the spell bar (four element slots with glyph, keycap, essence
 // bar, recipe and effect word), the chain / grade badge and the control keys.
 import { CORE, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, W } from './config.js';
 import { BRUSHES, ELEMENTS } from './elements.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
-import { BOONS } from './boons.js';
 import { chainMult, reactionGrade } from './score.js';
 import { RIFT_PLANS, incomingSummary, upcoming } from './rifts.js';
 import { NODE_TYPES } from './path.js';
 import { drawBar, drawText, formatNumber } from './draw.js';
 import { isMuted } from './audio.js';
-import { GLYPH_COLORS, drawGlyph, drawGlyphTile } from './glyphs.js';
+import { drawGlyph } from './glyphs.js';
 
 const BRUSH_GLYPHS = ['fire', 'water', 'earth', 'storm'];
 const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
@@ -21,7 +20,6 @@ const GOLD_LINE = 'rgba(212,170,85,0.75)';
 const PLATE = 'rgba(6,8,14,0.55)';
 
 const TOP_H = 46;
-const COLUMN = { x: 1118, y: 54, w: 154 };
 const BAR_Y = 736;
 const STRIP_Y = 728;
 
@@ -37,7 +35,7 @@ export function brushCardAt(x, y) {
 
 /** True where the pointer is over a HUD overlay, so a click there never paints the field. */
 export function overHud(x, y) {
-  return y < TOP_H || y >= STRIP_Y || (x >= COLUMN.x && y < 370);
+  return y < TOP_H || y >= STRIP_Y;
 }
 
 /** A thin dark translucent plate with a fine gold line. */
@@ -63,35 +61,42 @@ function drawRiftBlock(ctx, game) {
 }
 
 function drawGoal(ctx) {
-  drawText(ctx, 'WIN: seal 7 rifts + slay the Colossus', 152, 19, { size: 14, color: P.good, weight: 900, outline: 3 });
-  drawText(ctx, 'LOSE: the Core shatters', 152, 38, { size: 14, color: '#ff5a6a', weight: 900, outline: 3 });
+  drawText(ctx, 'WIN: seal 7 rifts + slay the Colossus', 140, 19, { size: 13, color: P.good, weight: 900, outline: 3 });
+  drawText(ctx, 'LOSE: the Core shatters', 140, 38, { size: 13, color: '#ff5a6a', weight: 900, outline: 3 });
 }
 
-/** The incoming creature groups, in the top strip's middle (when no boss is out). */
-function drawIncoming(ctx, game, x0) {
-  const groups = upcoming(game, 3);
-  if (groups.length === 0) {
-    const text = game.phase === 'clear' || game.phase === 'boon' || game.phase === 'won' ? 'rift cleared' : game.rift && !game.rift.done ? 'all creatures are out' : 'last creatures on the field';
-    drawText(ctx, text, x0, 29, { size: 14, color: P.muted, outline: 0 });
+/** The threat queue as one row of up to six icons with counts, in the top strip. */
+function drawThreatRow(ctx, game, x0) {
+  const rows = incomingSummary(game, 6);
+  if (rows.length === 0) {
+    drawText(ctx, game.phase === 'rift' ? 'all creatures out' : 'rift cleared', x0, 29, { size: 13, color: P.muted, outline: 0 });
     return;
   }
-  groups.forEach((g, i) => {
-    const x = x0 + i * 124;
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  rows.forEach((row, i) => {
+    const x = x0 + i * 50;
+    ctx.save();
     ctx.beginPath();
-    ctx.roundRect(x, 8, 118, 30, 7);
-    ctx.fill();
-    drawCreatureSprite(ctx, g.kind, x + 17, 24, g.kind === 'colossus' ? 8 : 10, 0, {});
-    drawText(ctx, `x${g.count}`, x + 36, 30, { size: 17, color: '#ffffff' });
-    drawText(ctx, g.gate, x + 76, 29, { size: 11, color: '#ffc27a' });
+    ctx.rect(x, 6, 48, 34);
+    ctx.clip();
+    drawCreatureSprite(ctx, row.kind, x + 13, 23, row.kind === 'swarm' ? 7 : 9, 0, {});
+    ctx.restore();
+    drawText(ctx, `x${row.count}`, x + 25, 30, { size: 14, color: '#ffd24a' });
   });
+}
+
+/** The next wave, in the top strip (when no boss is out). */
+function drawNextLine(ctx, game, x0) {
+  const next = upcoming(game, 1)[0];
+  const secs = next ? Math.ceil(next.seconds + (game.phase === 'prep' ? game.prepTimer : 0)) : 0;
+  const line = next ? `NEXT ${next.count} ${KINDS[next.kind].name.split(' ').pop()} \u00b7 ${next.gate[0]} ${secs}s` : 'no more to spawn';
+  drawText(ctx, line, x0, 29, { size: 13, color: '#ffd9a0', outline: 2 });
 }
 
 /** The Colossus's health and plate order. */
 function drawBossStrip(ctx, boss, time, x, w) {
   drawText(ctx, 'HOLLOW COLOSSUS', x, 15, { size: 12, color: '#c58aff' });
-  drawBar(ctx, x + 132, 5, w - 132, 10, boss.hp / boss.maxHp, '#c0486a');
-  if (boss.exposed > 0) drawText(ctx, `EXPOSED! ${Math.ceil(boss.exposed)}s`, x + 132 + (w - 132) / 2, 14, { size: 10.5, color: '#ffe9a8', align: 'center', outline: 2 });
+  drawBar(ctx, x + 124, 5, w - 124, 10, boss.hp / boss.maxHp, '#c0486a');
+  if (boss.exposed > 0) drawText(ctx, `EXPOSED! ${Math.ceil(boss.exposed)}s`, x + 124 + (w - 124) / 2, 14, { size: 10.5, color: '#ffe9a8', align: 'center', outline: 2 });
   const chipW = (w - 3 * 5) / 4;
   PLATES.forEach((plate, i) => {
     const cx = x + i * (chipW + 5);
@@ -106,13 +111,13 @@ function drawBossStrip(ctx, boss, time, x, w) {
     ctx.strokeStyle = broken ? P.good : plate.color;
     ctx.lineWidth = current ? 2.5 : 1.2;
     ctx.stroke();
-    drawText(ctx, `${i + 1} ${plate.need}`, cx + chipW / 2, 34, { size: 11.5, color: broken ? P.good : current ? '#05060a' : plate.color, align: 'center', outline: current ? 0 : 2 });
+    drawText(ctx, `${i + 1} ${plate.need}`, cx + chipW / 2, 34, { size: 10, color: broken ? P.good : current ? '#05060a' : plate.color, align: 'center', outline: current ? 0 : 2 });
   });
 }
 
 function drawCoreStrip(ctx, game) {
-  const x = 945;
-  const w = 145;
+  const x = 1026;
+  const w = 112;
   drawText(ctx, 'CORE', x, 13, { size: 11, color: P.core, outline: 0 });
   if (game.core.shield > 0) drawText(ctx, `SHIELD ${Math.ceil(game.core.shield)}`, x + w, 13, { size: 10, color: '#bfefff', align: 'right', outline: 2 });
   const ratio = game.core.hp / CORE.maxHp;
@@ -133,61 +138,11 @@ function drawTopStrip(ctx, game, bests, time) {
   ctx.fillRect(0, TOP_H - 1, W, 1);
   drawRiftBlock(ctx, game);
   drawGoal(ctx);
-  if (game.boss) drawBossStrip(ctx, game.boss, time, 560, 370);
-  else drawIncoming(ctx, game, 560);
+  drawThreatRow(ctx, game, 402);
+  if (game.boss) drawBossStrip(ctx, game.boss, time, 712, 300);
+  else drawNextLine(ctx, game, 712);
   drawCoreStrip(ctx, game);
   drawScoreStrip(ctx, game, bests);
-}
-
-/** What each creature is weak to (glyph). */
-const WEAKNESS = { imp: 'water', golem: 'ice', wraith: 'storm', beetle: 'fire', swarm: 'water', ram: 'lava' };
-
-/** The threat queue column: icon, count, side and weakness glyph per kind, then the boons as icons. */
-function drawColumn(ctx, game) {
-  const rows = incomingSummary(game, 6);
-  const number = Math.min(RIFT_COUNT, game.phase === 'prep' ? game.riftNum + 1 : Math.max(1, game.riftNum));
-  const { x, y, w } = COLUMN;
-  const h = 30 + Math.max(1, rows.length) * 30 + 20;
-  plate(ctx, x, y, w, h);
-  drawText(ctx, `THREAT · RIFT ${number}`, x + w / 2, y + 18, { size: 12, color: '#ffd24a', align: 'center' });
-  if (rows.length === 0) drawText(ctx, game.phase === 'rift' ? 'all creatures out' : 'rift cleared', x + w / 2, y + 56, { size: 12, color: P.muted, align: 'center', outline: 0 });
-  rows.forEach((row, i) => {
-    const ry = y + 26 + i * 30;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x + 4, ry, 34, 30);
-    ctx.clip();
-    drawCreatureSprite(ctx, row.kind, x + 21, ry + 15, row.kind === 'swarm' ? 7 : 9, 0, {});
-    ctx.restore();
-    drawText(ctx, `x${row.count}`, x + 88, ry + 21, { size: 16, color: '#ffd24a', align: 'right' });
-    drawText(ctx, row.gate[0], x + 94, ry + 20, { size: 11, color: '#ffc27a', weight: 800, outline: 2 });
-    const weak = WEAKNESS[row.kind];
-    ctx.beginPath();
-    ctx.arc(x + w - 20, ry + 15, 11, 0, 6.283);
-    ctx.fillStyle = 'rgba(5,7,12,0.8)';
-    ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = GLYPH_COLORS[weak];
-    ctx.stroke();
-    drawGlyph(ctx, weak, x + w - 20, ry + 15, 6.5, GLYPH_COLORS[weak], 2.2);
-  });
-  const next = upcoming(game, 1)[0];
-  const secs = next ? Math.ceil(next.seconds + (game.phase === 'prep' ? game.prepTimer : 0)) : 0;
-  const line = next ? `NEXT ${next.count} ${KINDS[next.kind].name.split(' ').pop()} · ${next.gate[0]} ${secs}s` : 'no more to spawn';
-  drawText(ctx, line, x + w / 2, y + h - 7, { size: 11, color: '#ffd9a0', align: 'center', outline: 2 });
-  // Boons held.
-  const held = BOONS.filter((b) => game.boons[b.id]).slice(0, 6);
-  const by = y + h + 8;
-  const bh = 56;
-  plate(ctx, x, by, w, bh);
-  drawText(ctx, 'BOONS', x + 10, by + 17, { size: 11, color: P.muted, outline: 0 });
-  if (held.length === 0) drawText(ctx, 'none yet', x + w / 2, by + 40, { size: 11, color: P.muted, align: 'center', outline: 0 });
-  held.forEach((b, i) => {
-    const cx = x + 19 + i * 23.5;
-    const cy = by + 38;
-    drawGlyphTile(ctx, b.glyph, cx, cy, 22, b.color);
-    if (game.boons[b.id] > 1) drawText(ctx, `${game.boons[b.id]}`, cx + 11, cy + 15, { size: 9, align: 'right', color: '#ffffff', outline: 2 });
-  });
 }
 
 /** One element slot: keycap, glyph medallion, name, essence bar and number, recipe + effect word. */
@@ -352,7 +307,6 @@ export function drawKeyBar(ctx) {
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
   drawTopStrip(ctx, game, bests, time);
-  drawColumn(ctx, game);
   drawPrepLine(ctx, game, time);
   drawTip(ctx, game);
   drawHowTo(ctx, game);

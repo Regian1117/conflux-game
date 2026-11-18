@@ -4,12 +4,12 @@
 // photographing (the board filled with every element, a chain about to land) by painting through
 // the same grid functions the player's brush uses.
 import { COLS, ROWS, STEP } from './config.js';
-import { CHARGED, CLOUD, EARTH, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
+import { CHARGED, CLOUD, EARTH, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
 import { botStep, createBot } from './autopilot.js';
 import { autoAdvance, callRift, createGame, setCursor, updateGame } from './game.js';
 import { setCell, toScreenX, toScreenY } from './grid.js';
 import { offerBoons, takeBoon } from './boons.js';
-import { damageCreature, spawnCreature } from './creatures.js';
+import { KINDS, damageCreature, spawnCreature } from './creatures.js';
 import { reactNow } from './reactions.js';
 import { addBolt, addFlash, addText, burst, updateFx } from './particles.js';
 import { nodeById, reachableNodes } from './path.js';
@@ -214,6 +214,172 @@ function stageCover(seed) {
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }
 
+/** The rift-7 state shared by the candidate covers: the Colossus out, an empty field, the HUD numbers of the cover. */
+function stageRiftSeven(seed) {
+  const game = createGame(seed, 1, -1);
+  const bot = createBot();
+  for (const id of ['frost', 'wide', 'arc', 'arc', 'lava', 'overflow', 'shield']) takeBoon(game, id);
+  game.riftNum = 6;
+  walkRoute(game, 7);
+  game.phase = 'prep';
+  game.prepTimer = 0;
+  game.stats.riftsCleared = 6;
+  game.score = 30400;
+  advance(game, bot, 40, (g) => g.boss !== null && g.rift.clock > 20, true);
+  game.grid.type.fill(0);
+  game.creatures = game.creatures.filter((c) => c === game.boss);
+  game.core.hp = 74;
+  game.core.shield = 7;
+  return game;
+}
+
+/** Put the Colossus at (x, y) cells with `plates` broken and the cover's health. */
+function stageBoss(game, x, y, plates = 2) {
+  const boss = game.boss;
+  if (!boss) return null;
+  boss.x = x;
+  boss.y = y;
+  boss.plates = plates;
+  boss.exposed = 0;
+  boss.plateT = Array.from({ length: plates }, (_, i) => boss.age - 1.1 + i * 0.4);
+  boss.hp = Math.round(boss.maxHp * 0.58);
+  boss.flash = 0;
+  boss.stompTimer = 6;
+  return boss;
+}
+
+/** The chain meter and the game's own reaction path: x7 with its callout at the top of the field. */
+function stageChain(game, at) {
+  game.fx.texts.length = 0;
+  game.tip = null;
+  game.chain.count = 4;
+  game.chain.timer = 2.6;
+  game.chain.best = 9;
+  game.chain.lastText = -9;
+  game.chain.lastGain = -9;
+  game.chain.kinds.clear();
+  ['STEAM', 'SHOCK', 'QUENCH', 'STRIKE', 'MELT', 'MAGNET', 'FROST', 'SHATTER'].forEach((n) => game.chain.kinds.add(n));
+  game.fx.sigil.length = 0;
+  reactNow(game, [{ name: 'STORMSTEAM', x: at[0], y: at[1] }, { name: 'LAVA', x: at[0] - 2, y: at[1] }]);
+  game.fx.bolts.length = 0;
+  const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
+  if (callout) {
+    callout.angle = 0;
+    callout.life = callout.max = 3;
+    callout.vy = 0;
+  }
+}
+
+/** Lightning links between creatures with glow and sparks (no numbers), the sigil lit along them. */
+function stageLinks(game, chain) {
+  chain.forEach((c, i) => {
+    const x = toScreenX(c.x);
+    const y = toScreenY(c.y);
+    if (i > 0) addBolt(game.fx, toScreenX(chain[i - 1].x), toScreenY(chain[i - 1].y), x, y, '#9ff3ff', 3, 2.4);
+    burst(game.fx, 'zap', x, y, 7, ['#ffffff', '#9ff3ff']);
+    burst(game.fx, 'spark', x, y, 5);
+    game.fx.sigil.push({ x, y, color: '127,240,255', t: 0.1 + 0.06 * i });
+  });
+}
+
+function stageEnd(game, cursor = null) {
+  for (const c of game.creatures) {
+    c.steamed = 0;
+    c.wet = 0;
+  }
+  game.fx.texts = game.fx.texts.filter((t) => /^(CHAIN|COLOSSUS)/.test(t.text));
+  game.hideTags = true;
+  game.cursor = cursor ?? { x: 0, y: 0, down: false, inField: false, lastX: null, lastY: null, trail: [] };
+  for (let n = 0; n < 4; n += 1) updateFx(game.fx, STEP);
+  computeFlow(game.flow, game.grid);
+  return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
+}
+
+/** Candidate A, "DUEL": the Core and the Colossus, and between them one big storm strike and a charged pool. */
+function stageCoverA(seed) {
+  const game = stageRiftSeven(seed);
+  river(game, LAVA, 5, 3, 5.4, 26, 3.8, 2.2);
+  river(game, EARTH, 9.4, 3, 9.8, 22, 1.7, 1);
+  blob(game, ICE, 45.5, 26.5, 3.6, 2.2);
+  blob(game, WATER, 36.5, 20.6, 9.5, 2.3);
+  for (let col = 0; col < COLS; col += 1) for (let row = 16; row < 26; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
+  blob(game, CLOUD, 36.5, 15.2, 5.2, 1.3);
+  stageBoss(game, 39, 10.4, 2);
+  place(game, 'golem', 'E', 45, 26.2).frozen = 99;
+  place(game, 'imp', 'W', 5.4, 12);
+  place(game, 'wraith', 'N', 21, 7);
+  place(game, 'wraith', 'N', 29.5, 6);
+  const chain = [['imp', 44, 20.2], ['wraith', 40.5, 21.2], ['beetle', 37, 20.2], ['golem', 33.5, 21.2], ['swarm', 30, 20.2]].map(([kind, x, y]) => place(game, kind, 'E', x, y));
+  stageChain(game, [34, 21]);
+  forkedBolt(game, 722, 318, 700, 404);
+  forkedBolt(game, 760, 300, 800, 238);
+  stageLinks(game, chain);
+  addFlash(game.fx, 0.1, '#dfe8ff');
+  return stageEnd(game);
+}
+
+/** Candidate B, "SIGIL BLOOM": one element per quadrant, a STEAM + STORM bloom round the Core, creatures on the spokes. */
+function stageCoverB(seed) {
+  const game = stageRiftSeven(seed);
+  KINDS.colossus.r = 3.4;
+  blob(game, FIRE, 12, 9.5, 3.4, 2.3);
+  blob(game, LAVA, 12, 13.2, 3.6, 1.6);
+  blob(game, WATER, 39, 10, 4.2, 2.7);
+  blob(game, EARTH, 12.5, 22.4, 4.2, 2.5);
+  blob(game, STORM, 38.5, 22.4, 4.2, 2.5);
+  blob(game, STEAM, 25.5, 15.5, 5.8, 3.4);
+  stageBoss(game, 25.5, 9, 2);
+  for (const [kind, gate, x, y] of [['imp', 'W', 5, 15.6], ['swarm', 'W', 8.6, 15.4], ['wraith', 'E', 46.4, 15.5], ['beetle', 'E', 42.6, 15.7], ['ram', 'S', 25.5, 27.4], ['golem', 'S', 25.5, 23.6]]) place(game, kind, gate, x, y);
+  stageChain(game, [25.5, 15.5]);
+  const cx = toScreenX(25.5);
+  const cy = toScreenY(15.5);
+  for (let k = 0; k < 8; k += 1) {
+    const a = (k / 8) * Math.PI * 2;
+    addBolt(game.fx, cx + Math.cos(a) * 36, cy + Math.sin(a) * 36, cx + Math.cos(a) * 120, cy + Math.sin(a) * 120, k % 2 ? '#c58aff' : '#9ff3ff', 3, 2);
+  }
+  burst(game.fx, 'zap', cx, cy, 8, ['#ffffff', '#c58aff']);
+  game.fx.sigil.push({ x: cx, y: cy, color: '197,138,255', t: 0.5 });
+  addFlash(game.fx, 0.1, '#dfe8ff');
+  return stageEnd(game);
+}
+
+/** Candidate C, "BREAKING POINT": the last plate shatters, a gold burst from the chest, the Core flares. */
+function stageCoverC(seed) {
+  const game = stageRiftSeven(seed);
+  blob(game, WATER, 14, 22.5, 6.2, 2.2);
+  for (let col = 0; col < 24; col += 1) for (let row = 18; row < 27; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
+  blob(game, STEAM, 14, 19.4, 5, 1.6);
+  blob(game, CLOUD, 12, 5.6, 6, 1.5);
+  const boss = stageBoss(game, 25.5, 9.8, 4);
+  if (boss) {
+    boss.ruin = true;
+    boss.hp = Math.round(boss.maxHp * 0.03);
+    boss.plateT = [boss.age - 0.9, boss.age - 0.7, boss.age - 0.45, boss.age - 0.12];
+  }
+  const dying = [['imp', 'W', 16, 22], ['wraith', 'N', 36, 14], ['beetle', 'E', 40, 20.5], ['golem', 'E', 33, 24], ['swarm', 'W', 20.5, 24.5], ['ram', 'E', 44, 25]].map(([kind, gate, x, y]) => place(game, kind, gate, x, y));
+  stageChain(game, [14, 22]);
+  game.fx.texts.length = 0;
+  const gold = ['#ffd24a', '#ffe9a8', '#ffffff', '#ffb347'];
+  const chestX = toScreenX(25.5);
+  const chestY = toScreenY(9.8) - 16;
+  burst(game.fx, 'spark', chestX, chestY, 34, gold);
+  burst(game.fx, 'ember', chestX, chestY, 18, gold);
+  burst(game.fx, 'shard', chestX, chestY, 14, gold);
+  burst(game.fx, 'spark', toScreenX(25.5), toScreenY(15.5), 14, gold);
+  for (const c of dying) {
+    burst(game.fx, 'ember', toScreenX(c.x), toScreenY(c.y), 10, gold);
+    burst(game.fx, 'spark', toScreenX(c.x), toScreenY(c.y), 5, gold);
+  }
+  forkedBolt(game, 300, 100, 440, 170);
+  forkedBolt(game, 250, 120, 250, 390);
+  stageLinks(game, dying.slice(0, 2));
+  game.fx.sigil.push({ x: toScreenX(25.5), y: toScreenY(15.5), color: '255,210,100', t: 0.1 });
+  game.fx.sigil.push({ x: chestX, y: chestY + 40, color: '255,210,100', t: 0.15 });
+  addText(game.fx, 510, 64, 'COLOSSUS BROKEN', { color: '#ffd24a', size: 28, life: 3, vy: 0 });
+  addFlash(game.fx, 0.06, '#ffe9a8');
+  return stageEnd(game);
+}
+
 /** Title: the real title screen over live attract-mode play (the bot defending rift 2). */
 function stageTitle(seed) {
   const game = createGame(seed, 1);
@@ -286,5 +452,8 @@ export function stageShot(name, seed) {
   if (name === 'title') return stageTitle(seed);
   if (name === 'path') return stagePath(seed);
   if (name === 'results') return stageWin(seed);
+  if (name === 'cover_a') return stageCoverA(seed);
+  if (name === 'cover_b') return stageCoverB(seed);
+  if (name === 'cover_c') return stageCoverC(seed);
   return stageCover(seed);
 }

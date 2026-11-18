@@ -391,10 +391,10 @@ function drawWithFinish(ctx, kindId, r, draw, flash = false) {
   b.globalCompositeOperation = 'source-in';
   b.fillStyle = RIM_COLORS[kindId] ?? '#ffffff';
   b.fillRect(0, 0, size, size);
+  a.fillStyle = 'rgba(22,28,50,0.28)';
+  a.globalCompositeOperation = 'source-atop';
+  a.fillRect(0, 0, size, size);
   a.globalCompositeOperation = 'source-over';
-  a.globalAlpha = 0.85;
-  a.drawImage(finishB, 0, 0, size, size, 0, 0, size, size);
-  a.globalAlpha = 1;
   // Crisp outline.
   c.globalCompositeOperation = 'source-over';
   c.clearRect(0, 0, size, size);
@@ -404,7 +404,22 @@ function drawWithFinish(ctx, kindId, r, draw, flash = false) {
   c.fillRect(0, 0, size, size);
   const w = Math.max(1, Math.min(2, r / 7));
   for (let k = 0; k < 8; k += 1) ctx.drawImage(finishC, 0, 0, size, size, -half + Math.cos((k / 8) * TAU) * w, -half + Math.sin((k / 8) * TAU) * w, size, size);
+  ctx.save();
+  ctx.filter = 'saturate(0.42) brightness(0.95)';
   ctx.drawImage(finishA, 0, 0, size, size, -half, -half, size, size);
+  ctx.restore();
+  ctx.globalAlpha = 0.9;
+  ctx.drawImage(finishB, 0, 0, size, size, -half, -half, size, size);
+  ctx.globalAlpha = 1;
+  const core = ctx.createRadialGradient(0, -r * 0.1, 0, 0, -r * 0.1, r * 0.5);
+  core.addColorStop(0, RIM_COLORS[kindId] ?? '#ffffff');
+  core.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = core;
+  ctx.fillRect(-r, -r * 1.1, r * 2, r * 2);
+  ctx.restore();
 }
 
 export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
