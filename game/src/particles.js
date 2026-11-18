@@ -6,7 +6,7 @@ import { FONT } from './config.js';
 const MAX_PARTICLES = 1100;
 
 export function createFx(rng) {
-  return { rng, parts: [], texts: [], bolts: [], sigil: [], shake: 0, flash: 0, flashColor: '#ffffff' };
+  return { rng, parts: [], texts: [], bolts: [], sigil: [], rings: [], shake: 0, flash: 0, flashColor: '#ffffff' };
 }
 
 /**
@@ -90,7 +90,16 @@ export function addFlash(fx, amount, color = '#ffffff') {
   fx.flashColor = color;
 }
 
+/** An expanding shockwave ring (drawn crisply, also on a light ground). */
+export function addRing(fx, x, y, color = '#f2b730', size = 80) {
+  fx.rings.push({ x, y, color, size, t: 0 });
+}
+
 export function updateFx(fx, dt) {
+  for (let i = fx.rings.length - 1; i >= 0; i -= 1) {
+    fx.rings[i].t += dt;
+    if (fx.rings[i].t > 0.9) fx.rings.splice(i, 1);
+  }
   for (let i = fx.sigil.length - 1; i >= 0; i -= 1) {
     fx.sigil[i].t += dt;
     if (fx.sigil[i].t > 1.4) fx.sigil.splice(i, 1);
@@ -131,7 +140,28 @@ export function drawParticles(ctx, fx) {
   {
     for (const p of fx.parts) {
       const a = Math.max(0, p.life / p.max);
-      if (p.style === 'puff') {
+      if (p.style === 'puff' && THEME.bright) {
+        const rr = p.size * (1.6 - a * 0.6);
+        ctx.globalAlpha = a * 0.4;
+        ctx.fillStyle = '#6a7280';
+        ctx.beginPath();
+        ctx.arc(p.x + 3, p.y + 4, rr, 0, 6.283);
+        ctx.fill();
+        ctx.globalAlpha = a * 0.85;
+        ctx.fillStyle = '#fbfdff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, rr, 0, 6.283);
+        ctx.fill();
+      } else if (p.style === 'glow' && THEME.bright) {
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = '#2B2118';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.9 + 1, 0, 6.283);
+        ctx.fill();
+        ctx.stroke();
+      } else if (p.style === 'puff') {
         ctx.globalAlpha = a * 0.35;
         ctx.fillStyle = p.color;
         ctx.beginPath();
@@ -165,11 +195,24 @@ export function drawParticles(ctx, fx) {
       }
     }
     ctx.globalAlpha = 1;
+    for (const r of fx.rings) {
+      const k = r.t / 0.9;
+      ctx.globalAlpha = 1 - k;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 12 + r.size * k, 0, 6.283);
+      ctx.strokeStyle = '#2B2118';
+      ctx.lineWidth = 9 * (1 - k) + 2;
+      ctx.stroke();
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 5.5 * (1 - k) + 1;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
     ctx.lineJoin = 'round';
     for (const b of fx.bolts) {
       const a = Math.max(0, b.life / b.max);
       ctx.globalCompositeOperation = THEME.bright ? 'source-over' : 'lighter';
-      for (const pass of THEME.bright ? [['#2B1A5A', 6.5 * (b.width ?? 1), 0.85], [b.color, 4 * (b.width ?? 1), 1], ['#ffffff', 1.8 * (b.width ?? 1), 1]] : [[b.color, 7 * (b.width ?? 1), 0.28], ['#ffffff', 2.2 * (b.width ?? 1), 1]]) {
+      for (const pass of THEME.bright ? [['#2B1A5A', 10 * (b.width ?? 1), 0.9], ['#8a5cf0', 6 * (b.width ?? 1), 1], ['#ffffff', 2.6 * (b.width ?? 1), 1]] : [[b.color, 7 * (b.width ?? 1), 0.28], ['#ffffff', 2.2 * (b.width ?? 1), 1]]) {
         ctx.strokeStyle = pass[0];
         ctx.lineWidth = pass[1];
         ctx.globalAlpha = a * pass[2];
@@ -178,6 +221,27 @@ export function drawParticles(ctx, fx) {
         ctx.stroke();
       }
       ctx.globalCompositeOperation = 'source-over';
+      if (THEME.bright && b.points.length > 1 && a > 0.2) {
+        // Short radial spark rays at the impact.
+        const end = b.points[b.points.length - 1];
+        ctx.globalAlpha = a;
+        for (let k = 0; k < 7; k += 1) {
+          const ang = (k / 7) * 6.283 + b.points.length;
+          const x1 = end[0] + Math.cos(ang) * 6;
+          const y1 = end[1] + Math.sin(ang) * 6;
+          const x2 = end[0] + Math.cos(ang) * (16 + (k % 2) * 8);
+          const y2 = end[1] + Math.sin(ang) * (16 + (k % 2) * 8);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.strokeStyle = '#2B1A5A';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
     }
     ctx.globalAlpha = 1;
   }

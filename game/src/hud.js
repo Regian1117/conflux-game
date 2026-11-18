@@ -27,11 +27,11 @@ const C = {
 };
 
 const TOP_H = 46;
-const BAR_Y = 736;
-const STRIP_Y = 728;
+const BAR_Y = 722;
+const STRIP_Y = 716;
 
 /** Clickable brush cards, so the mouse can pick a brush as well as keys 1-4. */
-export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: 12 + i * 212, y: BAR_Y, w: 204, h: 58 }));
+export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: 12 + i * 212, y: BAR_Y, w: 204, h: 72 }));
 
 /** Recipe and effect word for each element slot (the words live here, not in the playfield). */
 const BRUSH_HINTS = ['+WATER = STEAM slows', '+STORM = SHOCK chains', '+FIRE = LAVA burns', '+WATER = CHARGE zaps'];
@@ -154,6 +154,7 @@ function drawTopStrip(ctx, game, bests, time) {
 
 /** One element slot: keycap, glyph medallion, name, essence bar and number, recipe + effect word. */
 function drawBrushSlots(ctx, game, time) {
+  const bright = THEME.bright;
   BRUSHES.forEach((id, i) => {
     const c = BRUSH_CARDS[i];
     const el = ELEMENTS[id];
@@ -161,47 +162,48 @@ function drawBrushSlots(ctx, game, time) {
     const empty = game.emptyFlash[i] > 0;
     ctx.save();
     if (selected) {
-      ctx.shadowColor = el.color;
-      ctx.shadowBlur = 14;
+      ctx.shadowColor = bright ? '#d8a020' : el.color;
+      ctx.shadowBlur = 16;
     }
     ctx.beginPath();
-    ctx.roundRect(c.x, c.y, c.w, c.h, 9);
-    ctx.fillStyle = selected ? (THEME.bright ? 'rgba(255,246,218,0.98)' : 'rgba(36,44,68,0.78)') : C.plate;
+    ctx.roundRect(c.x, c.y, c.w, c.h, 10);
+    ctx.fillStyle = selected ? (bright ? 'rgba(255,224,130,0.99)' : 'rgba(36,44,68,0.78)') : C.plate;
     ctx.fill();
     ctx.restore();
-    ctx.lineWidth = selected ? 3 : 1;
-    ctx.strokeStyle = selected ? el.color : C.line;
+    ctx.lineWidth = selected ? 4 : 1.5;
+    ctx.strokeStyle = selected ? (bright ? '#b87a10' : el.color) : bright ? '#8a6420' : C.line;
     ctx.beginPath();
-    ctx.roundRect(c.x, c.y, c.w, c.h, 9);
+    ctx.roundRect(c.x, c.y, c.w, c.h, 10);
     ctx.stroke();
-    if (selected) {
-      ctx.globalAlpha = 0.1 + Math.sin(time * 5) * 0.04;
-      ctx.fillStyle = el.color;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
+    const mx = c.x + 36;
+    const my = c.y + 32;
     ctx.beginPath();
-    ctx.arc(c.x + 33, c.y + 30, 21, 0, 6.283);
-    ctx.fillStyle = 'rgba(7,9,16,0.85)';
+    ctx.arc(mx, my, 25, 0, 6.283);
+    ctx.fillStyle = bright ? '#fbf3dc' : 'rgba(7,9,16,0.85)';
     ctx.fill();
-    ctx.lineWidth = 3;
+    if (bright) {
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#2B2118';
+      ctx.stroke();
+    }
+    ctx.lineWidth = 4;
     ctx.strokeStyle = el.color;
     ctx.stroke();
-    drawGlyph(ctx, BRUSH_GLYPHS[i], c.x + 33, c.y + 30, 14, el.color, 4);
+    drawGlyph(ctx, BRUSH_GLYPHS[i], mx, my, 17, el.color, 4.6);
     ctx.beginPath();
-    ctx.roundRect(c.x + 4, c.y + 4, 17, 17, 4);
+    ctx.roundRect(c.x + 4, c.y + 4, 19, 19, 4);
     ctx.fillStyle = '#2a3148';
     ctx.fill();
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.4;
     ctx.strokeStyle = '#aab4cc';
     ctx.stroke();
-    drawText(ctx, String(i + 1), c.x + 12.5, c.y + 17, { size: 12, align: 'center', outline: 0, raw: true });
-    drawText(ctx, el.name, c.x + 64, c.y + 21, { size: 16, color: el.color });
-    drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 8, c.y + 20, { size: 13, align: 'right', color: '#ffffff' });
-    drawBar(ctx, c.x + 64, c.y + 26, c.w - 74, 8, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
+    drawText(ctx, String(i + 1), c.x + 13.5, c.y + 18.5, { size: 13, align: 'center', outline: 0, raw: true });
+    drawText(ctx, el.name, c.x + 72, c.y + 25, { size: 21, color: bright ? '#2B2118' : el.color });
+    drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 8, c.y + 22, { size: 16, align: 'right', color: '#ffffff' });
+    drawBar(ctx, c.x + 72, c.y + 32, c.w - 82, 14, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
     ctx.font = '800 100px sans-serif';
-    const size = Math.min(12, ((c.w - 70) / ctx.measureText(BRUSH_HINTS[i]).width) * 100);
-    drawText(ctx, BRUSH_HINTS[i], c.x + 64, c.y + 51, { size, color: '#ffd9a0', weight: 800, outline: 2 });
+    const size = Math.min(13.5, ((c.w - 16) / ctx.measureText(BRUSH_HINTS[i]).width) * 100);
+    drawText(ctx, BRUSH_HINTS[i], c.x + c.w / 2, c.y + 67, { size, color: bright ? '#2B2118' : '#ffd9a0', align: 'center', weight: 800, outline: 2 });
   });
 }
 
@@ -213,13 +215,13 @@ function drawComboBadge(ctx, game) {
   const count = game.chain.count;
   const grade = count >= 2 ? reactionGrade(count) : null;
   const color = grade ? GRADE_COLORS[grade] : P.muted;
-  plate(ctx, x, y, w, 58, grade ? color : C.line, 9);
-  drawText(ctx, 'CHAIN', x + 10, y + 15, { size: 11, color: P.muted, outline: 0 });
-  drawText(ctx, count > 0 ? `x${count}` : '-', x + 10, y + 45, { size: 30, color: count >= 5 ? '#ffe23a' : count > 0 ? '#ffffff' : P.muted });
-  drawText(ctx, 'GRADE', x + w - 46, y + 15, { size: 11, color: P.muted, align: 'center', outline: 0 });
-  drawText(ctx, grade ?? '-', x + w - 46, y + 48, { size: 40, color, align: 'center' });
-  drawText(ctx, count > 0 ? `score x${chainMult(count).toFixed(1)}` : 'no combo', x + 10, y + 53, { size: 10, color: '#ffd9a0', outline: 0, weight: 800 });
-  if (count > 0) drawBar(ctx, x + 6, y + 56, w - 100, 2, game.chain.timer / REACT.chainWindow, color, 'rgba(0,0,0,0)');
+  plate(ctx, x, y, w, 72, grade ? color : C.line, 10);
+  drawText(ctx, 'CHAIN', x + 10, y + 17, { size: 12, color: P.muted, outline: 0 });
+  drawText(ctx, count > 0 ? `x${count}` : '-', x + 10, y + 52, { size: 38, color: count >= 5 ? '#ffe23a' : count > 0 ? '#ffffff' : P.muted });
+  drawText(ctx, 'GRADE', x + w - 46, y + 17, { size: 12, color: P.muted, align: 'center', outline: 0 });
+  drawText(ctx, grade ?? '-', x + w - 46, y + 58, { size: 50, color, align: 'center' });
+  drawText(ctx, count > 0 ? `score x${chainMult(count).toFixed(1)}` : 'no combo', x + 10, y + 67, { size: 11, color: '#ffd9a0', outline: 0, weight: 800 });
+  if (count > 0) drawBar(ctx, x + 6, y + 58, w - 100, 3, game.chain.timer / REACT.chainWindow, color, 'rgba(0,0,0,0)');
 }
 
 /** One drawn keycap; returns the x where the next item may start. */
@@ -248,12 +250,12 @@ export function drawToolBar(ctx, game, time) {
   drawBrushSlots(ctx, game, time);
   drawComboBadge(ctx, game);
   let x = 1070;
-  x = drawKeycap(ctx, 'SPACE', x, 738, 56, 24);
-  drawText(ctx, 'open rift', x + 1, 756, { size: 12, color: '#dfe7ff', weight: 700, outline: 0 });
+  x = drawKeycap(ctx, 'SPACE', x, 726, 60, 28);
+  drawText(ctx, 'open rift', x + 1, 747, { size: 13, color: '#dfe7ff', weight: 700, outline: 0 });
   x = 1070;
   const small = (key, label) => {
-    x = drawKeycap(ctx, key, x, 768, 24, 24);
-    drawText(ctx, label, x, 786, { size: 11, color: '#dfe7ff', weight: 700, outline: 0 });
+    x = drawKeycap(ctx, key, x, 762, 28, 28);
+    drawText(ctx, label, x, 783, { size: 12, color: '#dfe7ff', weight: 700, outline: 0 });
     x += ctx.measureText(label).width + 8;
   };
   small('P', 'pause');

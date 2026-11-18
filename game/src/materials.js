@@ -631,6 +631,11 @@ export function drawMaterials(ctx, game, time) {
     const cells = lists[type];
     if (cells.length === 0) continue;
     const entry = maskFor(type, cells, time);
+    if (THEME.bright && type !== FIRE) {
+      ctx.globalAlpha = type === CLOUD ? 0.3 : 0.22;
+      ctx.drawImage(entry.outline, FIELD.x + 7, FIELD.y + (type === CLOUD ? 20 : 10));
+      ctx.globalAlpha = 1;
+    }
     ctx.drawImage(entry.outline, FIELD.x, FIELD.y);
     const layer = layerFor(type);
     const g = layer.getContext('2d');
@@ -656,6 +661,21 @@ export function drawMaterials(ctx, game, time) {
     ctx.globalAlpha = 0.3;
     ctx.drawImage(entry.shade, FIELD.x, FIELD.y);
     ctx.globalAlpha = 1;
+    if (type === LAVA && THEME.bright) {
+      // A bright orange heat-haze ring rising off the lava.
+      for (const i of cells) {
+        const h = hash(i, 41);
+        if (h < 0.78) continue;
+        const k = (time * 0.7 + h * 6) % 1;
+        ctx.globalAlpha = 0.5 * (1 - k);
+        ctx.strokeStyle = '#ff8a1c';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(FIELD.x + (i % COLS) * CELL + 10, FIELD.y + Math.floor(i / COLS) * CELL + 10, 10 + k * 22, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
     if (type === ICE) drawIceExtras(ctx, grid, cells, time);
     if (type === MAGNET) drawFieldLines(ctx, cells, time);
   }

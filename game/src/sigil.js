@@ -64,10 +64,10 @@ export function paintSigil(g, mode) {
   const stroke = (w, a) => {
     if (mode === 'ink') {
       g.strokeStyle = `rgba(58,38,20,${Math.min(1, a + 0.32)})`;
-      g.lineWidth = w;
+      g.lineWidth = Math.max(2, w * 1.35);
     } else if (mode === 'goldflat') {
       g.strokeStyle = `rgba(206,150,40,${Math.min(1, a + 0.2)})`;
-      g.lineWidth = w * 0.5;
+      g.lineWidth = w * 0.8;
     } else {
       g.strokeStyle = gold ? `rgba(228,184,98,${a})` : '#ffffff';
       g.lineWidth = gold ? w : w + 1.5;
@@ -107,6 +107,21 @@ export function paintSigil(g, mode) {
   ring(308, 1.2, 0.5);
   ring(380, 2, 0.55);
   ring(470, 2, 0.45);
+  if (mode === 'goldflat') {
+    // Filled gold segments between the paired rings.
+    for (const [r1, r2, n] of [[78, 90, 12], [228, 238, 36], [298, 308, 48], [168, 178, 24]]) {
+      g.fillStyle = 'rgba(214,160,44,0.8)';
+      for (let k = 0; k < n; k += 2) {
+        const t0 = (k / n) * TAU;
+        const t1 = ((k + 1) / n) * TAU;
+        g.beginPath();
+        g.arc(CX, CY, r2, t0, t1);
+        g.arc(CX, CY, r1, t1, t0, true);
+        g.closePath();
+        g.fill();
+      }
+    }
+  }
   ticks(168, 178, 72, 0.5);
   ticks(298, 308, 96, 0.5);
   ticks(380, 392, 120, 0.4);

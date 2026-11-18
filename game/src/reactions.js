@@ -5,7 +5,7 @@ import { SIGIL_COLORS } from './sigil.js';
 import { COLS, FIELD, REACT, ROWS } from './config.js';
 import { CHARGED, CLOUD, EARTH, EMPTY, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER, ruleFor } from './elements.js';
 import { inGrid, setCell, toScreenX, toScreenY } from './grid.js';
-import { addBolt, addFlash, addShake, addText, burst } from './particles.js';
+import { addBolt, addFlash, addShake, addText, burst, addRing } from './particles.js';
 import { damageArea, damageCreature } from './creatures.js';
 import { noteReaction } from './boss.js';
 import { addScore } from './score.js';
@@ -226,6 +226,7 @@ function registerReactions(game, events) {
     const size = Math.min(24, 14 + chain.count * 1.4);
     addText(game.fx, FIELD.x + FIELD.w * 0.5, FIELD.y + 66, `CHAIN x${chain.count} · ${top}`, { color, size, life: 1.5, vy: 0, pop: 0.3 });
     sfx.chain(chain.count);
+    if (chain.count >= 5) addRing(game.fx, px, py + 30, '#f2b730', 90);
     if (chain.count >= 6) addShake(game.fx, Math.min(9, chain.count * 0.7));
     if (chain.count % 10 === 0) addFlash(game.fx, 0.25, color);
   } else if (gain > 0 && (wasZero || game.t - chain.lastText > 1.2)) {

@@ -236,10 +236,28 @@ function drawCore(ctx, game, time) {
   ctx.beginPath();
   P.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
   ctx.closePath();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = THEME.bright ? '#2B2118' : '#ffffff';
+  ctx.lineWidth = THEME.bright ? 3.6 : 2.2;
   ctx.stroke();
   ctx.translate(0, -(bob - 6));
+  if (THEME.bright) {
+    // A halo ring and white-cyan facet highlights, so the crystal pops on the light ground.
+    for (const [rad, lw, col] of [[66, 7.5, '#2B2118'], [66, 4, '#bff4ff'], [56, 2, '#ffffff']]) {
+      ctx.beginPath();
+      ctx.ellipse(0, -8, rad, rad * 0.92, 0, 0, 6.283);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-14, -52);
+    ctx.lineTo(-8, -22);
+    ctx.moveTo(8, -46);
+    ctx.lineTo(4, -30);
+    ctx.stroke();
+  }
   for (let k = 0; k < 4; k += 1) {
     const a = time * 1.3 + k * 1.57;
     ctx.fillStyle = '#c8fbff';

@@ -251,6 +251,159 @@ function vignette(g) {
   g.fillRect(0, 0, FIELD.w, FIELD.h);
 }
 
+const INK = '#2B2118';
+
+function shadow(g, x, y, rx, ry) {
+  g.fillStyle = 'rgba(70,46,22,0.26)';
+  g.beginPath();
+  g.ellipse(x + 3, y + 3, rx, ry, 0, 0, 6.283);
+  g.fill();
+}
+
+/** Alchemist's-sanctum details scattered on the sigil: crystals, broken pillars, rune stones, moss, vials, brass rings. */
+function brightLife(g, rng) {
+  const cx = (CORE.col + 0.5) * CELL;
+  const cy = (CORE.row + 0.5) * CELL;
+  const spots = [];
+  for (let tries = 0; spots.length < 70 && tries < 3000; tries += 1) {
+    const x = rng.range(26, FIELD.w - 26);
+    const y = rng.range(52, FIELD.h - 44);
+    if (Math.hypot(x - cx, y - cy) < 120) continue;
+    if (spots.some((q) => Math.hypot(q.x - x, q.y - y) < 44)) continue;
+    spots.push({ x, y, kind: spots.length % 6, r: rng.range(-0.3, 0.3) });
+  }
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  for (const { x, y, kind, r } of spots) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(r);
+    if (kind === 0) {
+      shadow(g, 0, 2, 20, 6);
+      [[-10, 20, 7], [0, 30, 9], [10, 16, 6]].forEach(([dx, h, w], i) => {
+        const grad = g.createLinearGradient(dx - w, -h, dx + w, 0);
+        grad.addColorStop(0, '#e6f8ff');
+        grad.addColorStop(1, i % 2 ? '#9a8cf0' : '#6fb6f0');
+        g.beginPath();
+        g.moveTo(dx - w, 0);
+        g.lineTo(dx - w * 0.4, -h * 0.82);
+        g.lineTo(dx, -h);
+        g.lineTo(dx + w * 0.6, -h * 0.8);
+        g.lineTo(dx + w, 0);
+        g.closePath();
+        g.fillStyle = grad;
+        g.fill();
+        g.lineWidth = 2;
+        g.strokeStyle = INK;
+        g.stroke();
+        g.beginPath();
+        g.moveTo(dx - w * 0.3, -2);
+        g.lineTo(dx - w * 0.2, -h * 0.7);
+        g.strokeStyle = 'rgba(255,255,255,0.9)';
+        g.lineWidth = 1.6;
+        g.stroke();
+      });
+    } else if (kind === 1) {
+      shadow(g, 0, 2, 18, 6);
+      g.beginPath();
+      g.moveTo(-9, 0);
+      g.lineTo(-9, -26);
+      g.lineTo(-4, -31);
+      g.lineTo(0, -25);
+      g.lineTo(5, -32);
+      g.lineTo(9, -22);
+      g.lineTo(9, 0);
+      g.closePath();
+      g.fillStyle = '#c4b392';
+      g.fill();
+      g.lineWidth = 2.4;
+      g.strokeStyle = INK;
+      g.stroke();
+      g.fillStyle = 'rgba(110,86,52,0.35)';
+      g.fillRect(2, -24, 7, 24);
+      g.beginPath();
+      g.moveTo(-4, -14);
+      g.lineTo(-1, -8);
+      g.lineTo(-5, -3);
+      g.lineWidth = 1.4;
+      g.strokeStyle = INK;
+      g.stroke();
+      g.beginPath();
+      g.ellipse(14, -2, 6, 4, 0, 0, 6.283);
+      g.fillStyle = '#b3a283';
+      g.fill();
+      g.lineWidth = 1.8;
+      g.stroke();
+    } else if (kind === 2) {
+      const halo = g.createRadialGradient(0, 0, 4, 0, 0, 30);
+      halo.addColorStop(0, 'rgba(50,30,12,0.4)');
+      halo.addColorStop(1, 'rgba(50,30,12,0)');
+      g.fillStyle = halo;
+      g.fillRect(-30, -30, 60, 60);
+      g.beginPath();
+      g.ellipse(0, 0, 15, 11, 0, 0, 6.283);
+      g.fillStyle = '#8f8472';
+      g.fill();
+      g.lineWidth = 2.2;
+      g.strokeStyle = INK;
+      g.stroke();
+      g.strokeStyle = '#d6a02c';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(0, -6);
+      g.lineTo(0, 6);
+      g.moveTo(-5, -2);
+      g.lineTo(5, 3);
+      g.stroke();
+    } else if (kind === 3) {
+      for (const [dx, dy, rr] of [[-8, 0, 8], [4, -3, 10], [12, 3, 7]]) {
+        g.beginPath();
+        g.arc(dx, dy, rr, 0, 6.283);
+        g.fillStyle = '#7ba450';
+        g.fill();
+        g.lineWidth = 1.6;
+        g.strokeStyle = '#3a5a26';
+        g.stroke();
+      }
+      for (const [dx, dy, col] of [[-6, -2, '#f2a0b4'], [6, -6, '#f6d44c'], [12, 2, '#ffffff'], [-1, 3, '#f6d44c']]) {
+        g.beginPath();
+        g.arc(dx, dy, 2.2, 0, 6.283);
+        g.fillStyle = col;
+        g.fill();
+      }
+    } else if (kind === 4) {
+      shadow(g, 0, 8, 9, 3);
+      g.rotate(0.5);
+      g.beginPath();
+      g.roundRect(-6, -8, 12, 16, 4);
+      g.fillStyle = 'rgba(120,214,206,0.9)';
+      g.fill();
+      g.lineWidth = 2;
+      g.strokeStyle = INK;
+      g.stroke();
+      g.fillStyle = 'rgba(214,150,40,0.9)';
+      g.fillRect(-5, 0, 10, 7);
+      g.fillStyle = '#b07a3a';
+      g.fillRect(-2.5, -13, 5, 5);
+      g.strokeRect(-2.5, -13, 5, 5);
+      g.fillStyle = 'rgba(255,255,255,0.9)';
+      g.fillRect(-4, -6, 2, 7);
+    } else {
+      for (const [rx, ry, lw] of [[13, 8, 5], [8, 5, 4]]) {
+        g.beginPath();
+        g.ellipse(0, 0, rx, ry, 0, 0, 6.283);
+        g.strokeStyle = INK;
+        g.lineWidth = lw + 2.4;
+        g.stroke();
+        g.strokeStyle = '#d8a02a';
+        g.lineWidth = lw;
+        g.stroke();
+      }
+    }
+    g.restore();
+  }
+}
+
 /** The bright floor: pale sandstone with paper grain and faint cracks, the sigil in ink and gold. */
 function brightGround(g, rng) {
   const base = g.createLinearGradient(0, 0, FIELD.w, FIELD.h);
@@ -278,6 +431,7 @@ function brightGround(g, rng) {
   }
   paintSigil(g, 'ink');
   paintSigil(g, 'goldflat');
+  brightLife(g, rng);
   const grad = g.createRadialGradient(FIELD.w / 2, FIELD.h / 2, FIELD.h * 0.42, FIELD.w / 2, FIELD.h / 2, FIELD.w * 0.62);
   grad.addColorStop(0, 'rgba(90,60,28,0)');
   grad.addColorStop(1, 'rgba(90,60,28,0.2)');
