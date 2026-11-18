@@ -13,7 +13,7 @@ const TAGS = {
   [STEAM]: ['STEAM', 'slows', '#dff3fb', -30],
   [ICE]: ['ICE', 'freezes', '#bfeaff', 38],
   [CLOUD]: ['STORMCLOUD', 'strikes', '#a8b4ff', -4],
-  [MAGNET]: ['MAGNETITE', 'pulls', '#ff7a9a', 26],
+  [MAGNET]: ['MAGNETITE', 'pulls', '#c9b8ff', 26],
   [EARTH]: ['EARTH WALL', 'blocks', '#c9a36a', -90],
   [FIRE]: ['FIRE', 'burns', '#ff6a2a'],
   [WATER]: ['WATER', 'soaks', '#2ec8ff'],
@@ -97,18 +97,20 @@ function drawTagChip(ctx, px, py, name, note, color) {
 /** Draw the field's tags. `game.showAllTags` forces every tag on (the cover shot). */
 export function drawLabels(ctx, game) {
   const first = (game.labelSeen ??= {});
+  if (game.hideTags) return;
   const hover = game.cursor.inField ? game.cursor : null;
+  const tutorial = game.riftNum <= 1;
   placed.length = 0;
   // The boss and the Core first, so the area tags make way for them.
   const boss = game.boss;
-  if (boss) drawTagChip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
+  if (boss && (boss.age < 6 || (hover && Math.hypot(hover.x - boss.x, hover.y - boss.y) < 6))) drawTagChip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
   const coreX = CORE.col + 0.5;
   const coreY = CORE.row + 0.5;
   const nearCore = hover && Math.hypot(hover.x - coreX, hover.y - coreY) < 4;
-  if (game.showAllTags || game.t < 10 || nearCore) drawTagChip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, `CORE ${Math.ceil(game.core.hp)}/100`, 'defend it', '#ffe3a0');
+  if (game.showAllTags || (tutorial && game.t < 10) || nearCore) drawTagChip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, `CORE ${Math.ceil(game.core.hp)}/100`, 'defend it', '#ffe3a0');
   for (const area of findElementAreas(game)) {
     first[area.type] ??= game.t;
-    const fresh = game.t - first[area.type] < 4.5;
+    const fresh = tutorial && game.t - first[area.type] < 4.5;
     const hovered = hover && hover.x >= area.minCol - 1.5 && hover.x <= area.maxCol + 2.5 && hover.y >= area.minRow - 1.5 && hover.y <= area.maxRow + 2.5;
     if (!(game.showAllTags || fresh || hovered)) continue;
     const [name, note, color, dy = 0] = TAGS[area.type];

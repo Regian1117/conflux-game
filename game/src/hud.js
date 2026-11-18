@@ -28,6 +28,8 @@ export const BRUSH_CARDS = BRUSHES.map((_, i) => ({ x: 12 + i * 204, y: BAR_Y, w
 
 /** Two-word reaction hints, one per element slot. */
 const BRUSH_HINTS = ['+WATER = STEAM', '+STORM = SHOCK', '+FIRE = LAVA', '+WATER = CHARGED'];
+/** What each element's main reaction does, shown in the spell bar instead of tags in the field. */
+const BRUSH_EFFECTS = ['STEAM slows', 'SHOCK chains', 'LAVA burns', 'CHARGE zaps'];
 
 export function brushCardAt(x, y) {
   return BRUSH_CARDS.findIndex((c) => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h);
@@ -168,6 +170,7 @@ function drawBrushSlots(ctx, game, time) {
     drawText(ctx, el.name, c.x + 92, c.y + 40, { size: 20, color: el.color });
     drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 10, c.y + 24, { size: 16, align: 'right', color: '#ffffff' });
     drawBar(ctx, c.x + 92, c.y + 47, c.w - 102, 12, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
+    drawText(ctx, BRUSH_EFFECTS[i], c.x + 92, c.y + 79, { size: 14, color: '#ffffff', weight: 800, outline: 2 });
     drawText(ctx, BRUSH_HINTS[i], c.x + c.w / 2, c.y + 96, { size: 15, color: '#ffd9a0', align: 'center', weight: 800, outline: 2 });
   });
 }

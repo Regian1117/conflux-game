@@ -90,7 +90,7 @@ function cracks(g, rng) {
 
 function veins(g, rng) {
   g.globalCompositeOperation = 'lighter';
-  const colors = ['#c9962a', '#1d8aa8', '#c2501a', '#e0b050'];
+  const colors = ['#c9962a', '#2a8aa8', '#b8651f', '#e0b050'];
   for (let n = 0; n < 26; n += 1) {
     const x = rng.range(0, FIELD.w);
     const y = rng.range(0, FIELD.h);

@@ -471,7 +471,7 @@ const GLOW = {
   [STORM]: ['#8fb0ff', 0.5, 74],
   [CHARGED]: ['#6fe8ff', 0.5, 74],
   [CLOUD]: ['#7f98d8', 0.3, 64],
-  [MAGNET]: ['#ff6a86', 0.08, 50],
+  [MAGNET]: ['#b9a8ff', 0.08, 50],
   [ICE]: ['#a8e6ff', 0.2, 60],
   [WATER]: ['#22a8ff', 0.12, 56],
 };
@@ -586,7 +586,7 @@ function drawFieldLines(ctx, cells, t) {
     if (n % 3 !== 0) return;
     const cx = FIELD.x + (i % COLS) * CELL + 10;
     const cy = FIELD.y + Math.floor(i / COLS) * CELL + 10;
-    [['rgba(255,110,140,0.6)', 0], ['rgba(110,160,255,0.6)', Math.PI]].forEach(([color, phase]) => {
+    [['rgba(190,160,255,0.55)', 0], ['rgba(140,190,255,0.55)', Math.PI]].forEach(([color, phase]) => {
       ctx.strokeStyle = color;
       ctx.beginPath();
       for (let a = 0; a < 7.5; a += 0.25) {

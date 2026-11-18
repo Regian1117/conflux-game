@@ -178,9 +178,9 @@ function stageCover(seed) {
   game.fx.bolts.length = 0;
   const callout = game.fx.texts.find((t) => t.text.startsWith('CHAIN'));
   if (callout) {
-    callout.x = 735;
-    callout.y = 104;
-    callout.size = 32;
+    callout.x = 706;
+    callout.y = 118;
+    callout.size = 30;
     callout.angle = -0.03;
     callout.life = callout.max = 3;
     callout.vy = 0;
@@ -210,7 +210,7 @@ function stageCover(seed) {
   game.brush = 3;
   game.cursor = { x: 44.6, y: 20.4, down: true, inField: true, lastX: 44.6, lastY: 20.4, trail: [] };
   for (let i = 0; i <= 15; i += 1) game.cursor.trail.push({ x: 29.8 + i * 0.99, y: 20.5 + Math.sin(i * 0.8) * 0.2, age: (15 - i) * 0.028, brush: 3 });
-  game.showAllTags = true;
+  game.hideTags = true;
   game.showHowTo = true;
   return { game, screen: 'play', bests: { score: 31500, chain: 14 }, time: game.t };
 }

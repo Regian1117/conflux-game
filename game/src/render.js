@@ -410,7 +410,7 @@ function drawBloomAndGrain(ctx) {
   ctx.globalAlpha = 1;
   const vignette = ctx.createRadialGradient(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.h * 0.38, FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.w * 0.62);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.42)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.34)');
   ctx.fillStyle = vignette;
   ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
 }

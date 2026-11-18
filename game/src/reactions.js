@@ -219,8 +219,8 @@ function registerReactions(game, events) {
   const color = CALLOUT_COLORS[top] ?? '#ffffff';
   if (gain > 0 && chain.count >= 3 && game.t - chain.lastText > 0.3) {
     chain.lastText = game.t;
-    const half = (`CHAIN x${chain.count} - ${top}!`.length * Math.min(58, 24 + chain.count * 2.6) * 0.4) + 12;
-    addText(game.fx, Math.min(FIELD.x + FIELD.w - half, Math.max(FIELD.x + half, px)), Math.max(FIELD.y + 60, py), `CHAIN x${chain.count} - ${top}!`, { color, size: Math.min(58, 24 + chain.count * 2.6), life: 1.5, pop: 0.5 });
+    const size = Math.min(32, 20 + chain.count * 1.6);
+    addText(game.fx, FIELD.x + FIELD.w * 0.68, FIELD.y + 34, `CHAIN x${chain.count} · ${top}`, { color, size, life: 1.5, vy: 0, pop: 0.3 });
     sfx.chain(chain.count);
     if (chain.count >= 6) addShake(game.fx, Math.min(9, chain.count * 0.7));
     if (chain.count % 10 === 0) addFlash(game.fx, 0.25, color);
