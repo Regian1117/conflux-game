@@ -5,7 +5,7 @@ import { FONT } from './config.js';
 const MAX_PARTICLES = 1100;
 
 export function createFx(rng) {
-  return { rng, parts: [], texts: [], bolts: [], shake: 0, flash: 0, flashColor: '#ffffff' };
+  return { rng, parts: [], texts: [], bolts: [], sigil: [], shake: 0, flash: 0, flashColor: '#ffffff' };
 }
 
 /**
@@ -90,6 +90,10 @@ export function addFlash(fx, amount, color = '#ffffff') {
 }
 
 export function updateFx(fx, dt) {
+  for (let i = fx.sigil.length - 1; i >= 0; i -= 1) {
+    fx.sigil[i].t += dt;
+    if (fx.sigil[i].t > 1.4) fx.sigil.splice(i, 1);
+  }
   fx.shake = Math.max(0, fx.shake - dt * 22);
   fx.flash = Math.max(0, fx.flash - dt * 2.2);
   for (let i = fx.parts.length - 1; i >= 0; i -= 1) {

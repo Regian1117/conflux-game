@@ -1,6 +1,7 @@
 // Cell life and the reaction tick. Painted cells age and fade; four times a second every pair of
 // touching cells is checked against the rule table (elements.js), products spread or strike, and
 // everything that reacted feeds the chain counter with big floating callouts.
+import { SIGIL_COLORS } from './sigil.js';
 import { COLS, FIELD, REACT, ROWS } from './config.js';
 import { CHARGED, CLOUD, EARTH, EMPTY, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER, ruleFor } from './elements.js';
 import { inGrid, setCell, toScreenX, toScreenY } from './grid.js';
@@ -210,6 +211,9 @@ function registerReactions(game, events) {
   game.stats.bestChain = Math.max(game.stats.bestChain, chain.count);
   game.stats.reactions += events.filter((e) => !e.spread).length;
   for (const e of events) if (!e.spread) game.stats.byReaction[e.name] = (game.stats.byReaction[e.name] ?? 0) + 1;
+  for (const e of events) {
+    if (!e.spread && game.fx.sigil.length < 24) game.fx.sigil.push({ x: toScreenX(e.x), y: toScreenY(e.y), color: SIGIL_COLORS[e.name] ?? '255,233,168', t: 0 });
+  }
   game.stats.riftShocks += events.filter((e) => !e.spread && e.name === 'SHOCK').length;
   game.stats.maxShocks = Math.max(game.stats.maxShocks, game.stats.riftShocks);
   addScore(game, 4 * Math.min(events.length, 14));
@@ -219,8 +223,8 @@ function registerReactions(game, events) {
   const color = CALLOUT_COLORS[top] ?? '#ffffff';
   if (gain > 0 && chain.count >= 3 && game.t - chain.lastText > 0.3) {
     chain.lastText = game.t;
-    const size = Math.min(32, 20 + chain.count * 1.6);
-    addText(game.fx, FIELD.x + FIELD.w * 0.68, FIELD.y + 34, `CHAIN x${chain.count} · ${top}`, { color, size, life: 1.5, vy: 0, pop: 0.3 });
+    const size = Math.min(24, 14 + chain.count * 1.4);
+    addText(game.fx, FIELD.x + FIELD.w * 0.5, FIELD.y + 66, `CHAIN x${chain.count} · ${top}`, { color, size, life: 1.5, vy: 0, pop: 0.3 });
     sfx.chain(chain.count);
     if (chain.count >= 6) addShake(game.fx, Math.min(9, chain.count * 0.7));
     if (chain.count % 10 === 0) addFlash(game.fx, 0.25, color);

@@ -1,7 +1,7 @@
 // Paints the battlefield: the cached obsidian floor, torn rift portals, every painted cell as a
 // material (materials.js), the faceted Core Crystal, creatures, particles, floating text and the
 // brush cursor. The HUD and the overlay screens are painted on top by hud.js and screens.js.
-import { CELL, COLS, CORE, FIELD, GATES } from './config.js';
+import { CELL, COLS, CORE, FIELD, GATES, H, VIEW_SCALE, W } from './config.js';
 import { BRUSHES, ELEMENTS, ruleFor } from './elements.js';
 import { toScreenX, toScreenY } from './grid.js';
 import { KINDS, drawCreatures } from './creatures.js';
@@ -13,6 +13,7 @@ import { drawParticles, drawTexts } from './particles.js';
 import { upcoming } from './rifts.js';
 import { getGridLines, getGround } from './ground.js';
 import { drawGlyph } from './glyphs.js';
+import { drawSigilFlashes } from './sigil.js';
 import { drawMaterials } from './materials.js';
 
 const glowCache = new Map();
@@ -334,7 +335,7 @@ function drawCursor(ctx, game, time) {
     const under = game.grid.type[Math.floor(cur.y) * COLS + Math.floor(cur.x)] ?? 0;
     const rule = under ? ruleFor(under, BRUSHES[index]) : null;
     const made = rule && rule.a ? ELEMENTS[rule.a].name : '';
-    cursorTag(ctx, x + 16, y + 18, made ? `painting ${element.name} \u2192 ${made}` : `painting ${element.name}`, element.color);
+    if (!game.hideTags) cursorTag(ctx, x + 16, y + 18, made ? `painting ${element.name} \u2192 ${made}` : `painting ${element.name}`, element.color);
   }
 }
 
@@ -376,15 +377,23 @@ function drawApproachPaths(ctx, game) {
 let bloomCanvas = null;
 let grain = null;
 
+/** Offset that centres the scaled world in the canvas (a few pixels at most). */
+const VIEW_OFFSET = { x: (W - FIELD.w * VIEW_SCALE) / 2, y: (H - FIELD.h * VIEW_SCALE) / 2 };
+
+/** Convert a canvas pixel (the mouse) to a world pixel of the full-bleed field. */
+export function screenToWorld(px, py) {
+  return { x: (px - VIEW_OFFSET.x) / VIEW_SCALE, y: (py - VIEW_OFFSET.y) / VIEW_SCALE };
+}
+
 /**
- * Soft bloom (the bright parts of the field, blurred by downscaling and added back) and a faint
- * paper grain, so the scene reads as a painted arcane world rather than flat shapes.
+ * Soft bloom (the bright parts of the picture, blurred by downscaling and added back), a faint
+ * paper grain and a gentle vignette on the outer edge, over the whole canvas, before the HUD.
  */
 function drawBloomAndGrain(ctx) {
   if (!bloomCanvas) {
     bloomCanvas = document.createElement('canvas');
     bloomCanvas.width = 192;
-    bloomCanvas.height = 136;
+    bloomCanvas.height = 120;
     const n = document.createElement('canvas');
     n.width = 96;
     n.height = 96;
@@ -398,35 +407,35 @@ function drawBloomAndGrain(ctx) {
   const b = bloomCanvas.getContext('2d');
   b.globalCompositeOperation = 'source-over';
   b.filter = 'blur(2px) brightness(1.15) contrast(1.25)';
-  b.drawImage(ctx.canvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h, 0, 0, 192, 136);
+  b.drawImage(ctx.canvas, 0, 0, W, H, 0, 0, 192, 120);
   b.filter = 'none';
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.3;
-  ctx.drawImage(bloomCanvas, FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.drawImage(bloomCanvas, 0, 0, W, H);
   ctx.globalAlpha = 0.05;
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = grain;
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.fillRect(0, 0, W, H);
   ctx.globalAlpha = 1;
-  const vignette = ctx.createRadialGradient(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.h * 0.38, FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, FIELD.w * 0.62);
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.62, W / 2, H / 2, W * 0.64);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.34)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.3)');
   ctx.fillStyle = vignette;
-  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+  ctx.fillRect(0, 0, W, H);
 }
 
-/** Paint the whole battlefield for this frame (inside the FIELD rectangle, with screen shake). */
+/** Paint the whole battlefield, full-bleed: the world scaled to the canvas, with screen shake. */
 export function drawBattlefield(ctx, game, time) {
   const shake = game.fx.shake;
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
-  ctx.clip();
+  ctx.translate(VIEW_OFFSET.x, VIEW_OFFSET.y);
+  ctx.scale(VIEW_SCALE, VIEW_SCALE);
   ctx.translate(Math.sin(time * 91) * shake, Math.cos(time * 73) * shake);
   ctx.drawImage(getGround(), FIELD.x, FIELD.y);
   ctx.globalAlpha = game.cursor.down ? 0.07 : 0.035;
   ctx.drawImage(getGridLines(), FIELD.x, FIELD.y);
   ctx.globalAlpha = 1;
+  drawSigilFlashes(ctx, game.fx);
   drawGates(ctx, game, time);
   drawMaterials(ctx, game, time);
   drawCore(ctx, game, time);
@@ -437,15 +446,12 @@ export function drawBattlefield(ctx, game, time) {
   drawCursor(ctx, game, time);
   drawTexts(ctx, game.fx);
   drawLabels(ctx, game);
-  drawBloomAndGrain(ctx);
   ctx.restore();
+  drawBloomAndGrain(ctx);
   if (game.fx.flash > 0) {
     ctx.globalAlpha = Math.min(0.45, game.fx.flash * 0.5);
     ctx.fillStyle = game.fx.flashColor;
-    ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+    ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
   }
-  ctx.strokeStyle = '#2a3042';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(FIELD.x - 1.5, FIELD.y - 1.5, FIELD.w + 3, FIELD.h + 3);
 }

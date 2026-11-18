@@ -1,5 +1,5 @@
 // Every tuning number and colour for CONFLUX in one place. The canvas is a fixed 1280x800 (16:10)
-// logical area (scaled to the window by main.js); the battlefield is a 51x33 grid of 20px cells.
+// logical area (scaled to the window by main.js); the battlefield is a 51x32 grid of 20px cells, drawn full-bleed under the HUD.
 
 export const W = 1280;
 export const H = 800;
@@ -7,20 +7,21 @@ export const H = 800;
 export const STEP = 1 / 60;
 
 export const COLS = 51;
-export const ROWS = 30;
+export const ROWS = 32;
 export const CELL = 20;
-/** Where the battlefield sits on the canvas. */
-export const FIELD = { x: 12, y: 84, w: COLS * CELL, h: ROWS * CELL };
+/** The world fills the whole canvas: it is drawn scaled by VIEW_SCALE, so 1020x640 world pixels become 1280x800. */
+export const FIELD = { x: 0, y: 0, w: COLS * CELL, h: ROWS * CELL };
+export const VIEW_SCALE = Math.max(W / (COLS * CELL), H / (ROWS * CELL));
 
 export const RIFT_COUNT = 7;
 /** The Core Crystal fills the 3x3 cells around (col, row). */
-export const CORE = { col: 25, row: 14, maxHp: 100, hitRadius: 1.8 };
+export const CORE = { col: 25, row: 15, maxHp: 100, hitRadius: 1.8 };
 /** Rift gates on the four edges: where creatures step out. */
 export const GATES = {
-  W: { col: 0, row: 14, name: 'WEST' },
-  E: { col: 50, row: 14, name: 'EAST' },
+  W: { col: 0, row: 15, name: 'WEST' },
+  E: { col: 50, row: 15, name: 'EAST' },
   N: { col: 25, row: 0, name: 'NORTH' },
-  S: { col: 25, row: 29, name: 'SOUTH' },
+  S: { col: 25, row: 31, name: 'SOUTH' },
 };
 
 export const ESSENCE = { max: 100, regen: 7, perCell: 1.0, refreshCost: 0.4 };

@@ -4,6 +4,7 @@
 import { CELL, COLS, CORE, FIELD, GATES, ROWS } from './config.js';
 import { createRandom } from './random.js';
 import { drawGlyph } from './glyphs.js';
+import { paintSigil } from './sigil.js';
 
 let ground = null;
 let gridLines = null;
@@ -245,7 +246,7 @@ function landmarks(g) {
 function vignette(g) {
   const grad = g.createRadialGradient(FIELD.w / 2, FIELD.h / 2, FIELD.h * 0.35, FIELD.w / 2, FIELD.h / 2, FIELD.w * 0.62);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.25)');
   g.fillStyle = grad;
   g.fillRect(0, 0, FIELD.w, FIELD.h);
 }
@@ -259,18 +260,17 @@ export function getGround() {
   const g = ground.getContext('2d');
   const rng = createRandom(20260117);
   const base = g.createLinearGradient(0, 0, FIELD.w, FIELD.h);
-  base.addColorStop(0, '#12151f');
-  base.addColorStop(1, '#0a0c13');
+  base.addColorStop(0, '#181c29');
+  base.addColorStop(1, '#0e1119');
   g.fillStyle = base;
   g.fillRect(0, 0, FIELD.w, FIELD.h);
   stonePlates(g, rng);
   painterly(g, rng);
   speckle(g, rng);
-  scorches(g, rng);
   cracks(g, rng);
   veins(g, rng);
   rubble(g, rng);
-  engravedRunes(g, rng);
+  paintSigil(g, 'gold');
   landmarks(g);
   vignette(g);
   return ground;
