@@ -25,7 +25,8 @@ const MAX_FRAME = 0.25;
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
-THEME.bright = params.get('theme') === 'bright' || Boolean(shot && /_(d|f)$/.test(shot));
+// The bright theme is the default; ?theme=dark keeps the dark-obsidian look.
+THEME.bright = params.get('theme') !== 'dark';
 const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
 const baseSeed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
 

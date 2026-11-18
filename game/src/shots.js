@@ -303,8 +303,8 @@ function stageCoverA(seed, rich = false) {
   blob(game, ICE, 45.5, 26.5, 3.6, 2.2);
   blob(game, WATER, 36.5, 20.6, 9.5, 2.3);
   for (let col = 0; col < COLS; col += 1) for (let row = 16; row < 26; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
-  blob(game, CLOUD, 36.5, 16.9, 5.2, 1.1);
-  stageBoss(game, 39, 11.7, 2);
+  blob(game, CLOUD, 36.5, rich ? 16.3 : 16.9, rich ? 6.2 : 5.2, rich ? 1.3 : 1.1);
+  stageBoss(game, 39, rich ? 10.6 : 11.7, 2);
   place(game, 'golem', 'E', 45, 26.2).frozen = 99;
   place(game, 'imp', 'W', 5.4, 12);
   place(game, 'wraith', 'N', 21, 7);
@@ -312,7 +312,7 @@ function stageCoverA(seed, rich = false) {
   const chain = [['imp', 44, 20.2], ['wraith', 40.5, 21.2], ['beetle', 37, 20.2], ['golem', 33.5, 21.2], ['swarm', 30, 20.2]].map(([kind, x, y]) => place(game, kind, 'E', x, y));
   if (rich) {
     // A second stream from the west rift toward the Core, steam where the chain starts, lava embers, a gold shockwave.
-    for (const [kind, x, y] of [['swarm', 13.4, 15.7], ['golem', 16.8, 15.3], ['swarm', 20.2, 15.8]]) place(game, kind, 'W', x, y);
+    for (const [kind, x, y] of [['swarm', 13.4, 15.7], ['ram', 16.8, 15.3], ['swarm', 20.2, 15.8]]) place(game, kind, 'W', x, y);
     blob(game, STEAM, 27.8, 19.4, 2.6, 1.4);
   }
   stageChain(game, [34, 21]);
