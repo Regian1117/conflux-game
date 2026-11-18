@@ -303,14 +303,15 @@ function stageCoverA(seed) {
   blob(game, ICE, 45.5, 26.5, 3.6, 2.2);
   blob(game, WATER, 36.5, 20.6, 9.5, 2.3);
   for (let col = 0; col < COLS; col += 1) for (let row = 16; row < 26; row += 1) if (game.grid.type[row * COLS + col] === WATER) setCell(game.grid, col, row, CHARGED, 1.8);
-  blob(game, CLOUD, 36.5, 15.2, 5.2, 1.3);
-  stageBoss(game, 39, 10.4, 2);
+  blob(game, CLOUD, 36.5, 16.4, 5.2, 1.2);
+  stageBoss(game, 39, 11.7, 2);
   place(game, 'golem', 'E', 45, 26.2).frozen = 99;
   place(game, 'imp', 'W', 5.4, 12);
   place(game, 'wraith', 'N', 21, 7);
   place(game, 'wraith', 'N', 29.5, 6);
   const chain = [['imp', 44, 20.2], ['wraith', 40.5, 21.2], ['beetle', 37, 20.2], ['golem', 33.5, 21.2], ['swarm', 30, 20.2]].map(([kind, x, y]) => place(game, kind, 'E', x, y));
   stageChain(game, [34, 21]);
+  game.fx.parts.length = 0;
   forkedBolt(game, 722, 318, 700, 404);
   forkedBolt(game, 760, 300, 800, 238);
   stageLinks(game, chain);
@@ -447,7 +448,9 @@ function stageLose(seed) {
   return { game, screen: 'lose', bests: { score: 0, chain: 0 }, time: game.t };
 }
 
-export function stageShot(name, seed) {
+export function stageShot(rawName, seed) {
+  const name = rawName.endsWith('_d') ? rawName.slice(0, -2) : rawName;
+  if (name === 'cover') return rawName === name ? stageCover(seed) : stageCoverA(seed);
   if (name === 'lose') return stageLose(seed);
   if (name === 'title') return stageTitle(seed);
   if (name === 'path') return stagePath(seed);

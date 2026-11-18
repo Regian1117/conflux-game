@@ -1,7 +1,7 @@
 // Paints the battlefield: the cached obsidian floor, torn rift portals, every painted cell as a
 // material (materials.js), the faceted Core Crystal, creatures, particles, floating text and the
 // brush cursor. The HUD and the overlay screens are painted on top by hud.js and screens.js.
-import { CELL, COLS, CORE, FIELD, GATES, H, VIEW_SCALE, W } from './config.js';
+import { CELL, COLS, CORE, FIELD, GATES, H, THEME, VIEW_SCALE, W } from './config.js';
 import { BRUSHES, ELEMENTS, ruleFor } from './elements.js';
 import { toScreenX, toScreenY } from './grid.js';
 import { KINDS, drawCreatures } from './creatures.js';
@@ -183,14 +183,15 @@ function drawCore(ctx, game, time) {
   ctx.save();
   ctx.translate(x, y);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.12;
+  const soft = THEME.bright ? 0.28 : 1;
+  ctx.globalAlpha = (0.55 + Math.sin(time * 3) * 0.12) * soft;
   ctx.drawImage(glowSprite(tint), -110, -120, 220, 220);
-  ctx.globalAlpha = flash ? 0.3 : 0.5;
+  ctx.globalAlpha = (flash ? 0.3 : 0.5) * soft;
   ctx.drawImage(glowSprite(flash ? '#ff6070' : '#fff0c0'), -190, -205, 380, 380);
   ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.12;
   for (let k = 0; k < 9; k += 1) {
     const a = time * 0.25 + (k / 9) * 6.283;
-    ctx.globalAlpha = 0.13;
+    ctx.globalAlpha = THEME.bright ? 0.04 : 0.13;
     ctx.fillStyle = tint;
     ctx.beginPath();
     ctx.moveTo(0, -20);
@@ -410,7 +411,7 @@ function drawBloomAndGrain(ctx) {
   b.drawImage(ctx.canvas, 0, 0, W, H, 0, 0, 192, 120);
   b.filter = 'none';
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.3;
+  ctx.globalAlpha = THEME.bright ? 0.05 : 0.3;
   ctx.drawImage(bloomCanvas, 0, 0, W, H);
   ctx.globalAlpha = 0.05;
   ctx.globalCompositeOperation = 'source-over';
@@ -419,7 +420,7 @@ function drawBloomAndGrain(ctx) {
   ctx.globalAlpha = 1;
   const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.62, W / 2, H / 2, W * 0.64);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.3)');
+  vignette.addColorStop(1, THEME.bright ? 'rgba(90,60,28,0.2)' : 'rgba(0,0,0,0.3)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
 }

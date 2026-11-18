@@ -1,7 +1,7 @@
 // The battlefield floor: a textured obsidian plain with stone plates, cracks, faint glowing
 // mineral veins, rubble, scorch marks, a rune ring round the Core and a vignette. It is painted
 // once, with a fixed seed, onto an offscreen canvas and then just blitted every frame.
-import { CELL, COLS, CORE, FIELD, GATES, ROWS } from './config.js';
+import { CELL, COLS, CORE, FIELD, GATES, ROWS, THEME } from './config.js';
 import { createRandom } from './random.js';
 import { drawGlyph } from './glyphs.js';
 import { paintSigil } from './sigil.js';
@@ -251,6 +251,40 @@ function vignette(g) {
   g.fillRect(0, 0, FIELD.w, FIELD.h);
 }
 
+/** The bright floor: pale sandstone with paper grain and faint cracks, the sigil in ink and gold. */
+function brightGround(g, rng) {
+  const base = g.createLinearGradient(0, 0, FIELD.w, FIELD.h);
+  base.addColorStop(0, '#E9DCC0');
+  base.addColorStop(1, '#D8C49C');
+  g.fillStyle = base;
+  g.fillRect(0, 0, FIELD.w, FIELD.h);
+  for (let n = 0; n < 2600; n += 1) {
+    g.fillStyle = n % 3 === 0 ? 'rgba(255,250,235,0.35)' : 'rgba(110,80,44,0.12)';
+    g.fillRect(rng.range(0, FIELD.w), rng.range(0, FIELD.h), rng.range(1, 3), rng.range(1, 2));
+  }
+  g.strokeStyle = 'rgba(110,80,44,0.16)';
+  g.lineWidth = 1;
+  for (let n = 0; n < 34; n += 1) {
+    let x = rng.range(0, FIELD.w);
+    let y = rng.range(0, FIELD.h);
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let k = 0; k < 5; k += 1) {
+      x += rng.range(-26, 26);
+      y += rng.range(-26, 26);
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  paintSigil(g, 'ink');
+  paintSigil(g, 'goldflat');
+  const grad = g.createRadialGradient(FIELD.w / 2, FIELD.h / 2, FIELD.h * 0.42, FIELD.w / 2, FIELD.h / 2, FIELD.w * 0.62);
+  grad.addColorStop(0, 'rgba(90,60,28,0)');
+  grad.addColorStop(1, 'rgba(90,60,28,0.2)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, FIELD.w, FIELD.h);
+}
+
 /** The cached floor, FIELD.w x FIELD.h pixels, painted on first use. */
 export function getGround() {
   if (ground) return ground;
@@ -259,6 +293,10 @@ export function getGround() {
   ground.height = FIELD.h;
   const g = ground.getContext('2d');
   const rng = createRandom(20260117);
+  if (THEME.bright) {
+    brightGround(g, rng);
+    return ground;
+  }
   const base = g.createLinearGradient(0, 0, FIELD.w, FIELD.h);
   base.addColorStop(0, '#141c34');
   base.addColorStop(1, '#0b1122');
@@ -283,7 +321,7 @@ export function getGridLines() {
   gridLines.width = FIELD.w;
   gridLines.height = FIELD.h;
   const g = gridLines.getContext('2d');
-  g.strokeStyle = '#9fb3ff';
+  g.strokeStyle = THEME.bright ? '#7a5a30' : '#9fb3ff';
   g.lineWidth = 1;
   g.beginPath();
   for (let c = 0; c <= COLS; c += 1) {

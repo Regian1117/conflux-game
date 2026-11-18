@@ -2,7 +2,7 @@
 // medallion, or "THE CORE SHATTERS" with the rift reached. It has its own backdrop (the shattered
 // Colossus lit by rim light with gold rising, or the broken Core under a red glow), large stat
 // tiles, a bar chart of the reactions used and PLAY AGAIN / TITLE buttons.
-import { DIFFICULTIES, FONT, H, PALETTE as P, PLATES, RIFT_COUNT, W } from './config.js';
+import { DIFFICULTIES, FONT, H, PALETTE as P, PLATES, RIFT_COUNT, THEME, W } from './config.js';
 import { drawColossus } from './colossus.js';
 import { drawText, formatNumber } from './draw.js';
 import { drawFiligree, drawGlyph, GLYPH_COLORS } from './glyphs.js';
@@ -109,8 +109,8 @@ function fallenPlate(ctx, x, y, angle, scale, color) {
 /** Backdrop for a win: the Colossus fallen on its back, cracked and lit gold from its chest, plates scattered. */
 function winBackdrop(ctx, time) {
   const ground = ctx.createLinearGradient(0, 0, 0, H);
-  ground.addColorStop(0, '#0a0b12');
-  ground.addColorStop(1, '#15121a');
+  ground.addColorStop(0, THEME.bright ? '#EFE3C6' : '#0a0b12');
+  ground.addColorStop(1, THEME.bright ? '#D8C49C' : '#15121a');
   ctx.fillStyle = ground;
   ctx.fillRect(0, 0, W, H);
   const chestX = W / 2 - 80;

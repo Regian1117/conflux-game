@@ -3,7 +3,7 @@
 // element glyphs at the cardinal points and lines out to every rift. paintSigil draws it (gold on
 // the cached floor, or as a white mask); drawSigilFlashes lights the sigil's lines in an element's
 // colour around every reaction, so the floor itself shows the chain.
-import { CELL, CORE, FIELD } from './config.js';
+import { CELL, CORE, FIELD, THEME } from './config.js';
 import { drawGlyph, GLYPH_COLORS } from './glyphs.js';
 
 const TAU = Math.PI * 2;
@@ -62,8 +62,16 @@ function rune(g, x, y, angle, size, seed) {
 export function paintSigil(g, mode) {
   const gold = mode === 'gold';
   const stroke = (w, a) => {
-    g.strokeStyle = gold ? `rgba(228,184,98,${a})` : '#ffffff';
-    g.lineWidth = gold ? w : w + 1.5;
+    if (mode === 'ink') {
+      g.strokeStyle = `rgba(58,38,20,${Math.min(1, a + 0.32)})`;
+      g.lineWidth = w;
+    } else if (mode === 'goldflat') {
+      g.strokeStyle = `rgba(206,150,40,${Math.min(1, a + 0.2)})`;
+      g.lineWidth = w * 0.5;
+    } else {
+      g.strokeStyle = gold ? `rgba(228,184,98,${a})` : '#ffffff';
+      g.lineWidth = gold ? w : w + 1.5;
+    }
     g.lineCap = 'round';
     g.lineJoin = 'round';
   };
@@ -148,15 +156,16 @@ export function paintSigil(g, mode) {
   [['fire', 0, -233], ['water', 233, 0], ['earth', 0, 233], ['storm', -233, 0]].forEach(([kind, dx, dy]) => {
     const x = CX + dx;
     const y = CY + dy;
+    if (mode === 'goldflat') return;
     g.beginPath();
     g.arc(x, y, 25, 0, TAU);
-    if (gold) {
-      g.fillStyle = 'rgba(8,10,16,0.92)';
+    if (gold || mode === 'ink') {
+      g.fillStyle = gold ? 'rgba(8,10,16,0.92)' : 'rgba(238,224,190,0.97)';
       g.fill();
     }
     stroke(2.6, 0.85);
     g.stroke();
-    drawGlyph(g, kind, x, y, 14, gold ? GLYPH_COLORS[kind] : '#ffffff', 3.4);
+    drawGlyph(g, kind, x, y, 14, gold || mode === 'ink' ? GLYPH_COLORS[kind] : '#ffffff', 3.4);
   });
 }
 
@@ -190,6 +199,11 @@ export function drawSigilFlashes(ctx, fx) {
   g.drawImage(mask, 0, 0);
   g.globalCompositeOperation = 'source-over';
   ctx.save();
+  if (THEME.bright) {
+    ctx.drawImage(lit, 0, 0);
+    ctx.restore();
+    return;
+  }
   ctx.globalCompositeOperation = 'lighter';
   ctx.drawImage(lit, 0, 0);
   ctx.globalAlpha = 0.3;

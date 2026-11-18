@@ -1,5 +1,6 @@
 // Visual feedback that is not part of the rules: particles for every element, lightning bolts,
 // floating combat text, screen shake and the white hit flash. All positions are canvas pixels.
+import { THEME } from './config.js';
 import { FONT } from './config.js';
 
 const MAX_PARTICLES = 1100;
@@ -167,8 +168,8 @@ export function drawParticles(ctx, fx) {
     ctx.lineJoin = 'round';
     for (const b of fx.bolts) {
       const a = Math.max(0, b.life / b.max);
-      ctx.globalCompositeOperation = 'lighter';
-      for (const pass of [[b.color, 7 * (b.width ?? 1), 0.28], ['#ffffff', 2.2 * (b.width ?? 1), 1]]) {
+      ctx.globalCompositeOperation = THEME.bright ? 'source-over' : 'lighter';
+      for (const pass of THEME.bright ? [['#2B1A5A', 6.5 * (b.width ?? 1), 0.85], [b.color, 4 * (b.width ?? 1), 1], ['#ffffff', 1.8 * (b.width ?? 1), 1]] : [[b.color, 7 * (b.width ?? 1), 0.28], ['#ffffff', 2.2 * (b.width ?? 1), 1]]) {
         ctx.strokeStyle = pass[0];
         ctx.lineWidth = pass[1];
         ctx.globalAlpha = a * pass[2];

@@ -4,6 +4,7 @@
 // Used on the battlefield and, at small sizes, for the HUD's queue icons. `st` is the creature.
 import { drawColossus } from './colossus.js';
 import { drawGlyph } from './glyphs.js';
+import { THEME } from './config.js';
 
 const TAU = Math.PI * 2;
 
@@ -400,12 +401,12 @@ function drawWithFinish(ctx, kindId, r, draw, flash = false) {
   c.clearRect(0, 0, size, size);
   c.drawImage(finishA, 0, 0, size, size, 0, 0, size, size);
   c.globalCompositeOperation = 'source-in';
-  c.fillStyle = '#06080f';
+  c.fillStyle = THEME.bright ? '#2B2118' : '#06080f';
   c.fillRect(0, 0, size, size);
-  const w = Math.max(1, Math.min(2, r / 7));
+  const w = THEME.bright ? Math.max(1.8, Math.min(2.8, r / 6)) : Math.max(1, Math.min(2, r / 7));
   for (let k = 0; k < 8; k += 1) ctx.drawImage(finishC, 0, 0, size, size, -half + Math.cos((k / 8) * TAU) * w, -half + Math.sin((k / 8) * TAU) * w, size, size);
   ctx.save();
-  ctx.filter = 'saturate(0.42) brightness(0.95)';
+  ctx.filter = THEME.bright ? 'saturate(0.85) brightness(0.98)' : 'saturate(0.42) brightness(0.95)';
   ctx.drawImage(finishA, 0, 0, size, size, -half, -half, size, size);
   ctx.restore();
   ctx.globalAlpha = 0.9;
@@ -416,7 +417,7 @@ function drawWithFinish(ctx, kindId, r, draw, flash = false) {
   core.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.35;
+  ctx.globalAlpha = THEME.bright ? 0 : 0.35;
   ctx.fillStyle = core;
   ctx.fillRect(-r, -r * 1.1, r * 2, r * 2);
   ctx.restore();
@@ -427,7 +428,7 @@ export function drawCreatureSprite(ctx, kindId, x, y, r, t, st) {
   ctx.save();
   ctx.translate(x, y);
   if (kindId !== 'colossus') {
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillStyle = THEME.bright ? 'rgba(60,40,20,0.3)' : 'rgba(0,0,0,0.4)';
     ctx.beginPath();
     ctx.ellipse(0, r * 0.95, r * 1.0, r * 0.3, 0, 0, TAU);
     ctx.fill();

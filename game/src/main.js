@@ -4,7 +4,7 @@
 //
 // ?seed=N fixes the random seed. ?shot=cover|title|path|results (with &seed=N) stages that scene
 // instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, DIFFICULTIES, DIFFICULTY_KEY, H, RECORD_KEY, SEED_KEY, STEP, W } from './config.js';
+import { BEST_KEY, DIFFICULTIES, DIFFICULTY_KEY, H, RECORD_KEY, SEED_KEY, STEP, W, THEME } from './config.js';
 import { createInput } from './input.js';
 import { autoAdvance, callRift, createGame, pickNode, rerollBoons, resolveShrine, selectBrush, setCursor, tryProceed, updateGame } from './game.js';
 import { drawBattlefield, screenToWorld } from './render.js';
@@ -25,6 +25,7 @@ const MAX_FRAME = 0.25;
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
+THEME.bright = params.get('theme') === 'bright' || Boolean(shot && shot.endsWith('_d'));
 const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
 const baseSeed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
 

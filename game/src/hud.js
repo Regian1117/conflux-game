@@ -3,21 +3,28 @@
 // Core health and score, with the threat queue as one row of six creature icons with counts (the
 // boons are shown on the Rift Path screen). Bottom strip: the spell bar (four element slots with glyph, keycap, essence
 // bar, recipe and effect word), the chain / grade badge and the control keys.
-import { CORE, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, W } from './config.js';
+import { CORE, H, PALETTE as P, PLATES, REACT, RIFT_COUNT, THEME, W } from './config.js';
 import { BRUSHES, ELEMENTS } from './elements.js';
 import { KINDS } from './creatures.js';
 import { drawCreatureSprite } from './sprites.js';
 import { chainMult, reactionGrade } from './score.js';
 import { RIFT_PLANS, incomingSummary, upcoming } from './rifts.js';
 import { NODE_TYPES } from './path.js';
-import { drawBar, drawText, formatNumber } from './draw.js';
+import { drawBar, drawText, formatNumber, setInkText } from './draw.js';
 import { isMuted } from './audio.js';
 import { drawGlyph } from './glyphs.js';
 
 const BRUSH_GLYPHS = ['fire', 'water', 'earth', 'storm'];
 const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
-const GOLD_LINE = 'rgba(212,170,85,0.75)';
-const PLATE = 'rgba(6,8,14,0.55)';
+/** The plate fill and its fine gold line: dark glass, or light parchment in the bright theme. */
+const C = {
+  get plate() {
+    return THEME.bright ? 'rgba(240,229,201,0.93)' : 'rgba(6,8,14,0.55)';
+  },
+  get line() {
+    return THEME.bright ? 'rgba(150,104,34,0.95)' : 'rgba(212,170,85,0.75)';
+  },
+};
 
 const TOP_H = 46;
 const BAR_Y = 736;
@@ -39,10 +46,10 @@ export function overHud(x, y) {
 }
 
 /** A thin dark translucent plate with a fine gold line. */
-function plate(ctx, x, y, w, h, edge = GOLD_LINE, radius = 8) {
+function plate(ctx, x, y, w, h, edge = C.line, radius = 8) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
-  ctx.fillStyle = PLATE;
+  ctx.fillStyle = C.plate;
   ctx.fill();
   ctx.lineWidth = 1;
   ctx.strokeStyle = edge;
@@ -111,7 +118,7 @@ function drawBossStrip(ctx, boss, time, x, w) {
     ctx.strokeStyle = broken ? P.good : plate.color;
     ctx.lineWidth = current ? 2.5 : 1.2;
     ctx.stroke();
-    drawText(ctx, `${i + 1} ${plate.need}`, cx + chipW / 2, 34, { size: 10, color: broken ? P.good : current ? '#05060a' : plate.color, align: 'center', outline: current ? 0 : 2 });
+    drawText(ctx, `${i + 1} ${plate.need}`, cx + chipW / 2, 34, { size: 10, color: broken ? P.good : current ? '#05060a' : plate.color, align: 'center', outline: current ? 0 : 2, raw: true });
   });
 }
 
@@ -132,9 +139,9 @@ function drawScoreStrip(ctx, game, bests) {
 }
 
 function drawTopStrip(ctx, game, bests, time) {
-  ctx.fillStyle = PLATE;
+  ctx.fillStyle = C.plate;
   ctx.fillRect(0, 0, W, TOP_H);
-  ctx.fillStyle = GOLD_LINE;
+  ctx.fillStyle = C.line;
   ctx.fillRect(0, TOP_H - 1, W, 1);
   drawRiftBlock(ctx, game);
   drawGoal(ctx);
@@ -159,11 +166,11 @@ function drawBrushSlots(ctx, game, time) {
     }
     ctx.beginPath();
     ctx.roundRect(c.x, c.y, c.w, c.h, 9);
-    ctx.fillStyle = selected ? 'rgba(36,44,68,0.78)' : PLATE;
+    ctx.fillStyle = selected ? (THEME.bright ? 'rgba(255,246,218,0.98)' : 'rgba(36,44,68,0.78)') : C.plate;
     ctx.fill();
     ctx.restore();
     ctx.lineWidth = selected ? 3 : 1;
-    ctx.strokeStyle = selected ? el.color : GOLD_LINE;
+    ctx.strokeStyle = selected ? el.color : C.line;
     ctx.beginPath();
     ctx.roundRect(c.x, c.y, c.w, c.h, 9);
     ctx.stroke();
@@ -188,7 +195,7 @@ function drawBrushSlots(ctx, game, time) {
     ctx.lineWidth = 1.2;
     ctx.strokeStyle = '#aab4cc';
     ctx.stroke();
-    drawText(ctx, String(i + 1), c.x + 12.5, c.y + 17, { size: 12, align: 'center', outline: 0 });
+    drawText(ctx, String(i + 1), c.x + 12.5, c.y + 17, { size: 12, align: 'center', outline: 0, raw: true });
     drawText(ctx, el.name, c.x + 64, c.y + 21, { size: 16, color: el.color });
     drawText(ctx, String(Math.floor(game.essence[i])), c.x + c.w - 8, c.y + 20, { size: 13, align: 'right', color: '#ffffff' });
     drawBar(ctx, c.x + 64, c.y + 26, c.w - 74, 8, game.essence[i] / game.mods.essenceMax, empty && Math.floor(time * 12) % 2 === 0 ? P.danger : el.color);
@@ -206,7 +213,7 @@ function drawComboBadge(ctx, game) {
   const count = game.chain.count;
   const grade = count >= 2 ? reactionGrade(count) : null;
   const color = grade ? GRADE_COLORS[grade] : P.muted;
-  plate(ctx, x, y, w, 58, grade ? color : GOLD_LINE, 9);
+  plate(ctx, x, y, w, 58, grade ? color : C.line, 9);
   drawText(ctx, 'CHAIN', x + 10, y + 15, { size: 11, color: P.muted, outline: 0 });
   drawText(ctx, count > 0 ? `x${count}` : '-', x + 10, y + 45, { size: 30, color: count >= 5 ? '#ffe23a' : count > 0 ? '#ffffff' : P.muted });
   drawText(ctx, 'GRADE', x + w - 46, y + 15, { size: 11, color: P.muted, align: 'center', outline: 0 });
@@ -227,15 +234,16 @@ function drawKeycap(ctx, label, x, y, w, h = 30) {
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#aab4cc';
   ctx.stroke();
-  drawText(ctx, label, x + w / 2, y + h * 0.7, { size: h * 0.52, align: 'center', outline: 0 });
+  drawText(ctx, label, x + w / 2, y + h * 0.7, { size: h * 0.52, align: 'center', outline: 0, raw: true });
   return x + w + 6;
 }
 
 /** The bottom strip: spell bar, badge and control keys. */
 export function drawToolBar(ctx, game, time) {
-  ctx.fillStyle = PLATE;
+  setInkText(true);
+  ctx.fillStyle = C.plate;
   ctx.fillRect(0, STRIP_Y, W, H - STRIP_Y);
-  ctx.fillStyle = GOLD_LINE;
+  ctx.fillStyle = C.line;
   ctx.fillRect(0, STRIP_Y, W, 1);
   drawBrushSlots(ctx, game, time);
   drawComboBadge(ctx, game);
@@ -251,6 +259,7 @@ export function drawToolBar(ctx, game, time) {
   small('P', 'pause');
   small('M', isMuted() ? 'unmute' : 'mute');
   small('R', 'retry');
+  setInkText(false);
 }
 
 /** A one-line how-to above the spell bar: shown during the first rift's preparation. */
@@ -259,7 +268,7 @@ function drawHowTo(ctx, game) {
   const text = 'Paint WATER, then STORM on it: the shock chains through every creature in the pool';
   ctx.font = '800 15px sans-serif';
   const w = ctx.measureText(text).width + 32;
-  plate(ctx, (W - w) / 2, STRIP_Y - 34, w, 26, GOLD_LINE, 13);
+  plate(ctx, (W - w) / 2, STRIP_Y - 34, w, 26, C.line, 13);
   drawText(ctx, text, W / 2, STRIP_Y - 16, { size: 15, color: '#ffffff', align: 'center', weight: 800, outline: 2 });
 }
 
@@ -270,7 +279,7 @@ function drawPrepLine(ctx, game, time) {
   ctx.font = '800 16px sans-serif';
   const w = ctx.measureText(text).width + 32;
   const y = game.tip ? 96 : 54;
-  plate(ctx, (W - w) / 2, y, w, 28, GOLD_LINE, 14);
+  plate(ctx, (W - w) / 2, y, w, 28, C.line, 14);
   drawText(ctx, text, W / 2, y + 20, { size: 16, color: Math.floor(time * 2) % 2 === 0 ? '#ffffff' : '#ffd9a0', align: 'center', outline: 3 });
 }
 
@@ -306,9 +315,11 @@ export function drawKeyBar(ctx) {
 
 /** Paint the full HUD. `bests` = { score, chain } saved records. */
 export function drawHud(ctx, game, bests, time) {
+  setInkText(true);
   drawTopStrip(ctx, game, bests, time);
   drawPrepLine(ctx, game, time);
   drawTip(ctx, game);
   drawHowTo(ctx, game);
+  setInkText(false);
   drawToolBar(ctx, game, time);
 }

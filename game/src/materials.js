@@ -3,7 +3,7 @@
 // filled and detailed with that element's look (flames, cracked lava, rippling water, ice
 // facets, mossy rock...), given a bright rim, and lit with additive glow on the floor around it.
 // Each element is built on its own offscreen layer so the details stay inside the blob.
-import { CELL, COLS, FIELD, ROWS } from './config.js';
+import { CELL, COLS, FIELD, ROWS, THEME } from './config.js';
 import { CHARGED, CLOUD, EARTH, ELEMENTS, FIRE, ICE, LAVA, MAGNET, STEAM, STORM, WATER } from './elements.js';
 import { drawGlyph } from './glyphs.js';
 
@@ -120,7 +120,7 @@ function maskFor(type, cells, time) {
   d.clearRect(0, 0, FIELD.w, FIELD.h);
   d.drawImage(entry.mask, 0, 0);
   d.globalCompositeOperation = 'source-in';
-  d.fillStyle = '#05060a';
+  d.fillStyle = THEME.bright ? '#2B2118' : '#05060a';
   d.fillRect(0, 0, FIELD.w, FIELD.h);
   d.globalCompositeOperation = 'source-over';
   const o = entry.outline.getContext('2d');
@@ -164,6 +164,9 @@ function maskFor(type, cells, time) {
 
 const ICE_TONES = ['#f2fdff', '#c9ecfb', '#9bd6f2', '#69b0de', '#dff6ff', '#7cc3ea', '#4f8fc8', '#ffffff'];
 const BASES = { [FIRE]: '#c2300a', [LAVA]: '#2b0e08', [WATER]: '#0b6aa8', [CHARGED]: '#1590c4', [ICE]: '#6fb8e0', [EARTH]: '#5d4528', [STORM]: '#1a2850', [MAGNET]: '#26222c', [CLOUD]: '#2a3350' };
+/** Base colours on the light ground: clear cyan water, pale blue-white ice, deep orange-red lava with a dark crust. */
+const BRIGHT_BASES = { [WATER]: '#27a6e4', [CHARGED]: '#33b6ee', [ICE]: '#d2ecf8', [EARTH]: '#9a7a46', [LAVA]: '#8a1c0a', [MAGNET]: '#4c4860' };
+const baseOf = (type) => (THEME.bright ? BRIGHT_BASES[type] ?? BASES[type] : BASES[type]);
 const RIMS = { [FIRE]: '#ffd24a', [LAVA]: '#ff8a2a', [WATER]: '#bff2ff', [CHARGED]: '#ffffff', [ICE]: '#ffffff', [EARTH]: '#b09258', [STORM]: '#ffe23a', [MAGNET]: '#c9ccd8', [CLOUD]: '#b9a8ff' };
 
 /** Per-element detail painting, in layer coordinates, clipped to the blob by source-atop. */
@@ -478,15 +481,20 @@ const GLOW = {
 
 /** Steam: drifting translucent puffs, drawn straight onto the battlefield. */
 function drawSteam(ctx, cells, t) {
-  const puff = glowFor('rgba(235,246,252,0.95)');
+  const puff = glowFor('rgba(250,252,255,0.97)');
+  const shadowPuff = glowFor('rgba(96,104,118,0.9)');
   for (const i of cells) {
     const x = FIELD.x + (i % COLS) * CELL;
     const y = FIELD.y + Math.floor(i / COLS) * CELL;
     for (let k = 0; k < 2; k += 1) {
       const h = hash(i, k + 10);
       const rise = (t * 9 + h * 30) % 26;
-      ctx.globalAlpha = 0.3 * (1 - rise / 26);
       const r = 17 + h * 8 + rise * 0.3;
+      if (THEME.bright) {
+        ctx.globalAlpha = 0.2 * (1 - rise / 26);
+        ctx.drawImage(shadowPuff, x + 14 + Math.sin(t * 0.9 + h * 6) * 7 - r, y + 16 - rise - r, r * 2, r * 2);
+      }
+      ctx.globalAlpha = (THEME.bright ? 0.7 : 0.3) * (1 - rise / 26);
       ctx.drawImage(puff, x + 10 + Math.sin(t * 0.9 + h * 6) * 7 - r, y + 10 - rise - r, r * 2, r * 2);
     }
   }
@@ -495,15 +503,15 @@ function drawSteam(ctx, cells, t) {
 
 /** Forked lightning striking down from stormcloud cells, and arcs jumping across charged water. */
 function drawBolts(ctx, cloud, charged, t) {
-  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalCompositeOperation = THEME.bright ? 'source-over' : 'lighter';
   for (const i of cloud) {
     const phase = (t * 1.4 + hash(i, 9) * 9) % 3;
     if (phase > 0.28) continue;
     const x = FIELD.x + (i % COLS) * CELL + 10;
     const y = FIELD.y + Math.floor(i / COLS) * CELL + 14;
     const seed = i * 7 + Math.floor(t * 18);
-    drawZigzag(ctx, x, y, x + (hash(i, 11) - 0.5) * 50, y + 60 + hash(i, 12) * 50, seed, '#c58aff', 2.2);
-    drawZigzag(ctx, x + 4, y + 30, x + 36, y + 70, seed + 3, '#c58aff', 1.4);
+    drawZigzag(ctx, x, y, x + (hash(i, 11) - 0.5) * 50, y + 60 + hash(i, 12) * 50, seed, THEME.bright ? '#6a3ad8' : '#c58aff', 2.2);
+    drawZigzag(ctx, x + 4, y + 30, x + 36, y + 70, seed + 3, THEME.bright ? '#6a3ad8' : '#c58aff', 1.4);
   }
   if (charged.length > 1) {
     const step = Math.floor(t * 12);
@@ -515,7 +523,7 @@ function drawBolts(ctx, cloud, charged, t) {
       const ay = FIELD.y + Math.floor(a / COLS) * CELL + 10;
       const bx = FIELD.x + (b % COLS) * CELL + 10;
       const by = FIELD.y + Math.floor(b / COLS) * CELL + 10;
-      if (Math.hypot(ax - bx, ay - by) < 130) drawZigzag(ctx, ax, ay, bx, by, step * 31 + k, '#b27cff', 1.6);
+      if (Math.hypot(ax - bx, ay - by) < 130) drawZigzag(ctx, ax, ay, bx, by, step * 31 + k, THEME.bright ? '#6a3ad8' : '#b27cff', 1.6);
     }
   }
   ctx.globalCompositeOperation = 'source-over';
@@ -610,7 +618,7 @@ export function drawMaterials(ctx, game, time) {
 
   // Ground-hugging glow first, so every material sits in its own light.
   ctx.globalCompositeOperation = 'lighter';
-  for (const type of [FIRE, LAVA, STORM, CHARGED, CLOUD, MAGNET, ICE, WATER]) {
+  for (const type of THEME.bright ? [] : [FIRE, LAVA, STORM, CHARGED, CLOUD, MAGNET, ICE, WATER]) {
     const [color, alpha, size] = GLOW[type];
     ctx.globalAlpha = alpha;
     const sprite = glowFor(color);
@@ -628,12 +636,12 @@ export function drawMaterials(ctx, game, time) {
     const g = layer.getContext('2d');
     g.globalCompositeOperation = 'source-over';
     g.clearRect(0, 0, FIELD.w, FIELD.h);
-    g.fillStyle = BASES[type];
+    g.fillStyle = baseOf(type);
     g.fillRect(0, 0, FIELD.w, FIELD.h);
     DETAILS[type](g, cells, time);
     EXTRAS[type]?.(g, cells, time);
     if (type !== FIRE && type !== STORM && type !== CLOUD) {
-      g.globalAlpha = 0.34;
+      g.globalAlpha = THEME.bright ? 0.14 : 0.34;
       g.fillStyle = GLOW[type]?.[0] ?? RIMS[type];
       g.fillRect(0, 0, FIELD.w, FIELD.h);
       g.globalAlpha = 1;

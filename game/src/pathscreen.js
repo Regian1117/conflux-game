@@ -2,7 +2,7 @@
 // (completed path glowing gold, the current node pulsing, the reachable branches ahead), a tooltip
 // for the hovered node, the collected boons, the run seed, difficulty and rerolls, and on the
 // right the post-rift boon pick with rarity colours and a REROLL button. Also the shrine dialog.
-import { DIFFICULTIES, FONT, H, PLATES, RIFT_COUNT, W } from './config.js';
+import { DIFFICULTIES, FONT, H, PLATES, RIFT_COUNT, THEME, W } from './config.js';
 import { BOONS, RARITY, REROLL_COST } from './boons.js';
 import { NODE_TYPES, nodeById, nodePosition, reachableNodes } from './path.js';
 import { drawFiligree, drawGlyph, drawGlyphTile, GLYPH_COLORS } from './glyphs.js';
@@ -64,6 +64,23 @@ export function shrineChoiceAt(x, y) {
 }
 
 function parchment(ctx) {
+  if (THEME.bright) {
+    const sand = ctx.createLinearGradient(0, 0, W, H);
+    sand.addColorStop(0, '#E9DCC0');
+    sand.addColorStop(1, '#D8C49C');
+    ctx.fillStyle = sand;
+    ctx.fillRect(0, 0, W, H);
+    for (const [x, w] of [[24, 780], [812, 444]]) {
+      ctx.beginPath();
+      ctx.roundRect(x, 24, w, 684, 16);
+      ctx.fillStyle = '#1b1712';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = GOLD;
+      ctx.stroke();
+    }
+    return;
+  }
   const grad = ctx.createLinearGradient(0, 0, W, H);
   grad.addColorStop(0, '#0a0d17');
   grad.addColorStop(1, '#171c2e');

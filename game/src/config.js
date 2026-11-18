@@ -1,6 +1,9 @@
 // Every tuning number and colour for CONFLUX in one place. The canvas is a fixed 1280x800 (16:10)
 // logical area (scaled to the window by main.js); the battlefield is a 51x32 grid of 20px cells, drawn full-bleed under the HUD.
 
+/** Art direction: `bright` (?theme=bright, or the *_d candidate shots) draws a warm light ground with ink outlines. */
+export const THEME = { bright: false };
+
 export const W = 1280;
 export const H = 800;
 /** The simulation's fixed step in seconds: 60 updates a second whatever the display rate. */
