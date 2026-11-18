@@ -77,6 +77,10 @@ export function damageCreature(game, c, base, cls, type = 0) {
   if (dealt <= 0) return 0;
   c.hp -= dealt;
   if (dealt >= 4) c.flash = 0.1;
+  if (dealt >= 5 && (c.numberAt ?? 0) <= game.t) {
+    c.numberAt = game.t + 0.3;
+    addText(game.fx, toScreenX(c.x) + 14, toScreenY(c.y) + 8, `-${Math.round(dealt)}`, { size: 13, color: '#ffffff', life: 0.55, vy: -26 });
+  }
   c.dmgAcc += dealt;
   if (c.hp <= 0) killCreature(game, c);
   return dealt;

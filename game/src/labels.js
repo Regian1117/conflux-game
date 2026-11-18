@@ -24,7 +24,7 @@ const seen = new Int32Array(COLS * ROWS);
 const stack = [];
 
 /** The largest connected area of each element type: {type, size, cx, cy, minCol, maxCol, minRow, maxRow}. */
-function areas(game) {
+function findElementAreas(game) {
   const grid = game.grid;
   seen.fill(0);
   const best = new Map();
@@ -68,7 +68,7 @@ function areas(game) {
 const placed = [];
 
 /** One tag chip centred near canvas pixel (px, py): the name in the element colour, the note in white. It slides up or down until it clears the chips already placed. */
-function chip(ctx, px, py, name, note, color) {
+function drawTagChip(ctx, px, py, name, note, color) {
   ctx.font = '800 12px sans-serif';
   const wName = ctx.measureText(name).width;
   const wNote = note ? ctx.measureText(` \u00b7 ${note}`).width : 0;
@@ -101,19 +101,19 @@ export function drawLabels(ctx, game) {
   placed.length = 0;
   // The boss and the Core first, so the area tags make way for them.
   const boss = game.boss;
-  if (boss) chip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
+  if (boss) drawTagChip(ctx, toScreenX(boss.x), toScreenY(boss.y) + 96, 'HOLLOW COLOSSUS', 'break plates in order', '#ff9a5a');
   const coreX = CORE.col + 0.5;
   const coreY = CORE.row + 0.5;
   const nearCore = hover && Math.hypot(hover.x - coreX, hover.y - coreY) < 4;
-  if (game.showAllTags || game.t < 10 || nearCore) chip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, `CORE ${Math.ceil(game.core.hp)}/100`, 'defend it', '#ffe3a0');
-  for (const area of areas(game)) {
+  if (game.showAllTags || game.t < 10 || nearCore) drawTagChip(ctx, toScreenX(coreX), toScreenY(coreY) + 120, `CORE ${Math.ceil(game.core.hp)}/100`, 'defend it', '#ffe3a0');
+  for (const area of findElementAreas(game)) {
     first[area.type] ??= game.t;
     const fresh = game.t - first[area.type] < 4.5;
     const hovered = hover && hover.x >= area.minCol - 1.5 && hover.x <= area.maxCol + 2.5 && hover.y >= area.minRow - 1.5 && hover.y <= area.maxRow + 2.5;
     if (!(game.showAllTags || fresh || hovered)) continue;
     const [name, note, color, dy = 0] = TAGS[area.type];
     const right = area.type === CLOUD;
-    chip(ctx, toScreenX(right ? area.maxCol - 2 : area.cx), toScreenY(right ? area.minRow + 0.5 : area.cy) + dy, name, note, color);
+    drawTagChip(ctx, toScreenX(right ? area.maxCol - 2 : area.cx), toScreenY(right ? area.minRow + 0.5 : area.cy) + dy, name, note, color);
   }
   void CELL;
 }

@@ -14,13 +14,13 @@ import { drawCreatureSprite } from './sprites.js';
 const CHIP_W = 300;
 const CHIP_GAP = 20;
 /** Clickable difficulty buttons, left to right (Apprentice, Adept, Archmage). */
-export const DIFF_CHIPS = DIFFICULTIES.map((_, i) => ({ x: (W - (3 * CHIP_W + 2 * CHIP_GAP)) / 2 + i * (CHIP_W + CHIP_GAP), y: 558, w: CHIP_W, h: 50 }));
+export const DIFF_CHIPS = DIFFICULTIES.map((_, i) => ({ x: (W - (3 * CHIP_W + 2 * CHIP_GAP)) / 2 + i * (CHIP_W + CHIP_GAP), y: 590, w: CHIP_W, h: 46 }));
 /** The three omen cards. */
 const OMEN_W = 388;
-export const OMEN_CARDS = OMENS.map((_, i) => ({ x: (W - (3 * OMEN_W + 32)) / 2 + i * (OMEN_W + 16), y: 424, w: OMEN_W, h: 70 }));
+export const OMEN_CARDS = OMENS.map((_, i) => ({ x: (W - (3 * OMEN_W + 32)) / 2 + i * (OMEN_W + 16), y: 458, w: OMEN_W, h: 68 }));
 /** The "Same seed" toggle and the big start button. */
-export const SEED_CHIP = { x: 440, y: 612, w: 400, h: 30 };
-export const START_BUTTON = { x: 250, y: 648, w: 780, h: 90 };
+export const SEED_CHIP = { x: 440, y: 642, w: 400, h: 28 };
+export const START_BUTTON = { x: 250, y: 676, w: 780, h: 68 };
 
 /** What the pointer is over on the title screen: {type:'diff', index}, {type:'seed'}, {type:'start'} or null. */
 export function titleHit(x, y) {
@@ -91,7 +91,7 @@ const TILES = [
   ['water', 'frost', 'ice', 'ICE', 23],
 ];
 
-function drawTile(ctx, tile, x, y, w, h) {
+function drawReactionTile(ctx, tile, x, y, w, h) {
   const [a, b, result, name, size] = tile;
   const color = GLYPH_COLORS[result];
   ctx.beginPath();
@@ -127,7 +127,7 @@ const STEPS = [
 
 /** Choose your omen: three cards that change the run. */
 function drawOmens(ctx, omen, hit) {
-  drawText(ctx, 'CHOOSE YOUR OMEN', W / 2, 418, { size: 24, color: '#ffd24a', align: 'center' });
+  drawText(ctx, 'CHOOSE YOUR OMEN', W / 2, 452, { size: 24, color: '#ffd24a', align: 'center' });
   OMENS.forEach((o, i) => {
     const c = OMEN_CARDS[i];
     const selected = omen === i;
@@ -162,7 +162,7 @@ function drawOmens(ctx, omen, hit) {
 /** The bestiary: the six creatures, each with the element it fears. */
 function drawBestiary(ctx) {
   const x = 40;
-  const y = 500;
+  const y = 532;
   const w = W - 80;
   ctx.beginPath();
   ctx.roundRect(x, y, w, 50, 10);
@@ -185,13 +185,30 @@ function drawBestiary(ctx) {
   });
 }
 
+/** The whole game at a glance, in two bold lines under the tagline. */
+const FEATURE_LINES = [
+  '4 elements \u00b7 6 reactions \u00b7 6 creatures \u00b7 7 rifts \u00b7 branching Rift Path',
+  '3 omens \u00b7 3 difficulties \u00b7 the Hollow Colossus \u00b7 feats \u00b7 same seed',
+];
+
+function drawFeatureStrip(ctx) {
+  ctx.beginPath();
+  ctx.roundRect(60, 238, W - 120, 52, 10);
+  ctx.fillStyle = 'rgba(8,10,18,0.78)';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d4aa55';
+  ctx.stroke();
+  FEATURE_LINES.forEach((line, i) => drawText(ctx, line, W / 2, 262 + i * 22, { size: 21, color: i === 0 ? '#ffe9a8' : '#ffffff', align: 'center', outline: 3 }));
+}
+
 function drawSteps(ctx) {
   const w = 388;
   const gap = 16;
   const x0 = (W - (3 * w + 2 * gap)) / 2;
   STEPS.forEach(([glyph, head, sub, color], i) => {
     const x = x0 + i * (w + gap);
-    const y = 248;
+    const y = 296;
     ctx.beginPath();
     ctx.roundRect(x, y, w, 62, 12);
     ctx.fillStyle = 'rgba(8,10,18,0.92)';
@@ -232,13 +249,14 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed, omen = 0) 
     drawGlyph(ctx, kind, x, y, 21, '#ffffff', 5);
   });
   drawLogo(ctx, W / 2, 186, 160);
-  drawText(ctx, 'Paint four elements. Make them react. Hold the Core.', W / 2, 232, { size: 32, color: '#ffffff', align: 'center' });
+  drawText(ctx, 'Paint four elements. Make them react. Hold the Core.', W / 2, 230, { size: 30, color: '#ffffff', align: 'center' });
+  drawFeatureStrip(ctx);
   drawSteps(ctx);
   // Reaction tiles, one compact row.
   const tw = 188;
   const gap = 12;
   const x0 = (W - (6 * tw + 5 * gap)) / 2;
-  TILES.forEach((tile, i) => drawTile(ctx, tile, x0 + i * (tw + gap), 318, tw, 62));
+  TILES.forEach((tile, i) => drawReactionTile(ctx, tile, x0 + i * (tw + gap), 364, tw, 62));
   drawOmens(ctx, omen, hit);
   drawBestiary(ctx);
   // Difficulty.
@@ -253,8 +271,8 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed, omen = 0) 
     ctx.lineWidth = selected ? 5 : 2.5;
     ctx.strokeStyle = selected ? '#ffd24a' : '#5a6480';
     ctx.stroke();
-    drawText(ctx, d.name, c.x + c.w / 2, c.y + 31, { size: 27, color: selected ? '#ffd24a' : '#ffffff', align: 'center' });
-    drawText(ctx, d.tag, c.x + c.w / 2, c.y + 46, { size: 14, color: '#aab4cc', align: 'center', weight: 700, outline: 0 });
+    drawText(ctx, d.name, c.x + c.w / 2, c.y + 28, { size: 26, color: selected ? '#ffd24a' : '#ffffff', align: 'center' });
+    drawText(ctx, d.tag, c.x + c.w / 2, c.y + 42, { size: 12, color: '#aab4cc', align: 'center', weight: 700, outline: 0 });
   });
   // Same seed.
   const s = SEED_CHIP;
@@ -296,6 +314,6 @@ export function drawTitle(ctx, time, difficulty, hit, sameSeed, seed, omen = 0) 
   ctx.beginPath();
   ctx.roundRect(b.x, b.y, b.w, b.h, 22);
   ctx.stroke();
-  drawText(ctx, 'CLICK TO START', b.x + b.w / 2, b.y + 64, { size: 58, color: '#1a0c00', align: 'center', outline: 0 });
+  drawText(ctx, 'CLICK TO START', b.x + b.w / 2, b.y + 51, { size: 46, color: '#1a0c00', align: 'center', outline: 0 });
   drawKeyBar(ctx);
 }

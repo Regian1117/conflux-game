@@ -14,6 +14,7 @@ import { reactNow } from './reactions.js';
 import { addBolt, addFlash, addText, burst, updateFx } from './particles.js';
 import { nodeById, reachableNodes } from './path.js';
 import { computeFlow } from './pathing.js';
+import { gradeFor } from './score.js';
 
 const BOON_PREFERENCE = ['frost', 'wide', 'arc', 'overflow', 'shield', 'slowdecay', 'siphon', 'lava', 'mend'];
 const IDLE = () => ({ queue: [], stroke: null, cooldown: 99, progress: 0, flip: 0 });
@@ -185,6 +186,12 @@ function stageCover(seed) {
     callout.vy = 0;
   }
   // The storm: three thick forked bolts out of the cloud, onto the Colossus's shoulder, the pool and the ground by the Core.
+  // Hit feedback: small damage numbers beside the chain, white hit-flashes, one shatter burst.
+  chain.forEach((c, i) => {
+    addText(game.fx, toScreenX(c.x) + 22, toScreenY(c.y) + 10, `-${[62, 48, 71, 55, 38, 66, 44][i]}`, { size: 13, color: '#ffffff', life: 3, vy: 0 });
+    if (i === 1 || i === 4) c.flash = 0.1;
+  });
+  burst(game.fx, 'shard', toScreenX(46.2), toScreenY(17.6), 10);
   forkedBolt(game, 800, 128, 872, 232);
   forkedBolt(game, 940, 130, 952, 430);
   forkedBolt(game, 660, 128, 606, 318);
@@ -250,6 +257,14 @@ function stageWin(seed) {
   game.stats.shieldAbsorbed = 12;
   game.core.hp = 74;
   const previous = Math.round((game.score * 0.74) / 100) * 100;
+  // A plausible run history: this win (run 8) after earlier losses and wins.
+  game.history = [
+    { n: 8, won: true, rift: 7, grade: gradeFor(game), score: Math.round(game.score) },
+    { n: 7, won: false, rift: 6, grade: 'B', score: 41200 },
+    { n: 6, won: true, rift: 7, grade: 'B', score: 51000 },
+    { n: 5, won: false, rift: 3, grade: 'D', score: 14700 },
+    { n: 4, won: false, rift: 5, grade: 'C', score: 29800 },
+  ];
   return { game, screen: 'win', bests: { score: previous, chain: 19 }, time: game.t };
 }
 

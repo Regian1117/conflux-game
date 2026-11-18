@@ -13,7 +13,7 @@ const hash = (i, k) => {
 };
 
 /** A closed, smoothed outline through `pts` (unit coordinates), so rock reads as rounded stone. */
-function smooth(ctx, pts, u) {
+function smoothStonePath(ctx, pts, u) {
   const n = pts.length;
   const mid = (a, b) => [((a[0] + b[0]) / 2) * u, ((a[1] + b[1]) / 2) * u];
   const start = mid(pts[n - 1], pts[0]);
@@ -26,7 +26,7 @@ function smooth(ctx, pts, u) {
   ctx.closePath();
 }
 
-function jagged(ctx, pts, u) {
+function jaggedStonePath(ctx, pts, u) {
   ctx.beginPath();
   pts.forEach(([x, y], i) => ctx[i === 0 ? 'moveTo' : 'lineTo'](x * u, y * u));
   ctx.closePath();
@@ -44,7 +44,7 @@ function boulderPoints(cx, cy, r, seed) {
 }
 
 /** Fill the current path as lit stone with a dark outline and a pale top-left rim light. */
-function stone(ctx, u, top, bottom, rim, flash, outline = 4.5) {
+function paintStoneBody(ctx, u, top, bottom, rim, flash, outline = 4.5) {
   const grad = ctx.createLinearGradient(0, -2.6 * u, 0, 1.0 * u);
   grad.addColorStop(0, top);
   grad.addColorStop(1, bottom);
@@ -65,7 +65,7 @@ function stone(ctx, u, top, bottom, rim, flash, outline = 4.5) {
 
 /** Glowing cracks: polylines in unit coordinates, drawn with additive light. */
 let pulseT = 0;
-function cracks(ctx, u, lines, color, power) {
+function drawGlowingCracks(ctx, u, lines, color, power) {
   power *= 0.8 + 0.2 * Math.sin(pulseT * 3.2 + lines[0][0][0] * 4);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
@@ -98,7 +98,7 @@ function mossAndRubble(ctx, u, spots, flash) {
   }
 }
 
-function rock(ctx, x, y, s, seed) {
+function paintRock(ctx, x, y, s, seed) {
   ctx.fillStyle = '#6c7088';
   ctx.strokeStyle = '#05060a';
   ctx.lineWidth = 1.5;
@@ -126,7 +126,7 @@ function dustAndPebbles(ctx, u, t) {
   for (let k = 0; k < 7; k += 1) {
     const phase = (t * 0.7 + k * 0.173) % 1;
     const sx = (k % 2 ? 1 : -1) * (0.9 + hash(k, 7) * 0.7) * u;
-    rock(ctx, sx + hash(k, 8) * 14, -1.4 * u + phase * 2.3 * u, 3 + hash(k, 9) * 3, k);
+    paintRock(ctx, sx + hash(k, 8) * 14, -1.4 * u + phase * 2.3 * u, 3 + hash(k, 9) * 3, k);
   }
 }
 
@@ -134,17 +134,17 @@ function dustAndPebbles(ctx, u, t) {
 function drawArm(ctx, u, pose, side, flash, glow, exposed) {
   pose.forEach(([x, y, r], i) => {
     const last = i === pose.length - 1;
-    smooth(ctx, boulderPoints(x, y, r, side * 10 + i * 3), u);
-    stone(ctx, u, last ? '#7a7f98' : '#6a6f88', '#2b2f45', 'rgba(210,220,255,0.35)', flash, last ? 5 : 4);
+    smoothStonePath(ctx, boulderPoints(x, y, r, side * 10 + i * 3), u);
+    paintStoneBody(ctx, u, last ? '#7a7f98' : '#6a6f88', '#2b2f45', 'rgba(210,220,255,0.35)', flash, last ? 5 : 4);
   });
   const [fx, fy, fr] = pose[pose.length - 1];
   for (let k = 0; k < 3; k += 1) {
     const a = -1.2 + k * 0.5;
-    smooth(ctx, boulderPoints(fx + Math.cos(a + 1.4) * fr * 0.75, fy + Math.sin(a + 1.4) * fr * 0.75 + fr * 0.15, fr * 0.3, k + side * 5), u);
-    stone(ctx, u, '#767b94', '#2b2f45', 'rgba(210,220,255,0.3)', flash, 3);
+    smoothStonePath(ctx, boulderPoints(fx + Math.cos(a + 1.4) * fr * 0.75, fy + Math.sin(a + 1.4) * fr * 0.75 + fr * 0.15, fr * 0.3, k + side * 5), u);
+    paintStoneBody(ctx, u, '#767b94', '#2b2f45', 'rgba(210,220,255,0.3)', flash, 3);
   }
   const [ex, ey, er] = pose[Math.max(0, pose.length - 2)];
-  cracks(ctx, u, [[[fx - fr * 0.5, fy - fr * 0.3], [fx - fr * 0.1, fy + fr * 0.1], [fx + fr * 0.3, fy - fr * 0.2], [fx + fr * 0.55, fy + fr * 0.3]], [[ex - er * 0.4, ey], [ex, ey + er * 0.4], [ex + er * 0.3, ey + er * 0.1]]], glow, exposed ? 1 : 0.8);
+  drawGlowingCracks(ctx, u, [[[fx - fr * 0.5, fy - fr * 0.3], [fx - fr * 0.1, fy + fr * 0.1], [fx + fr * 0.3, fy - fr * 0.2], [fx + fr * 0.55, fy + fr * 0.3]], [[ex - er * 0.4, ey], [ex, ey + er * 0.4], [ex + er * 0.3, ey + er * 0.1]]], glow, exposed ? 1 : 0.8);
 }
 
 /** Outline of armour plate `i`: left pauldron, right pauldron, chest lintel, helm crest. */
@@ -155,7 +155,7 @@ function plateShape(ctx, i, u) {
     [[-0.72, -1.02], [-0.2, -1.22], [0.2, -1.22], [0.72, -1.02], [0.58, -0.82], [0.2, -0.95], [-0.2, -0.95], [-0.58, -0.82]],
     [[-0.5, -2.35], [-0.28, -2.72], [0, -2.9], [0.28, -2.72], [0.5, -2.35], [0.2, -2.5], [-0.2, -2.5]],
   ];
-  jagged(ctx, shapes[i], u);
+  jaggedStonePath(ctx, shapes[i], u);
 }
 
 function drawPlate(ctx, i, u, t, current) {
@@ -200,17 +200,17 @@ function drawLegs(ctx, u, t, flash, ruin, lit) {
   for (const side of [-1, 1]) {
     const lift = ruin ? 0 : Math.max(0, Math.sin(t * 1.8 + (side > 0 ? 0 : Math.PI))) * 0.16 * u;
     const pts = [[0.15, -0.1], [0.55, -0.15], [0.95, 0.05], [1.05, 0.55], [1.12, 0.95], [0.85, 1.05], [0.3, 1.02], [0.18, 0.7]].map(([x, y]) => [side * x, y - lift / u]);
-    smooth(ctx, pts, u);
-    stone(ctx, u, '#5d627c', '#242840', 'rgba(200,210,255,0.3)', flash);
-    cracks(ctx, u, [[[side * 0.6, 0.1 - lift / u], [side * 0.7, 0.5 - lift / u], [side * 0.55, 0.85 - lift / u]]], lit, 0.8);
+    smoothStonePath(ctx, pts, u);
+    paintStoneBody(ctx, u, '#5d627c', '#242840', 'rgba(200,210,255,0.3)', flash);
+    drawGlowingCracks(ctx, u, [[[side * 0.6, 0.1 - lift / u], [side * 0.7, 0.5 - lift / u], [side * 0.55, 0.85 - lift / u]]], lit, 0.8);
   }
 }
 
 function drawTorso(ctx, u, flash, lit, exposed, ruin, t) {
   const hump = [[-1.3, -1.2], [-1.05, -1.55], [-0.55, -1.5], [-0.2, -1.8], [0.3, -1.75], [0.7, -1.5], [1.1, -1.55], [1.35, -1.15], [1.2, -0.45], [0.9, 0.12], [0.2, 0.28], [-0.5, 0.2], [-0.95, 0.1], [-1.25, -0.5]];
-  smooth(ctx, hump, u);
-  stone(ctx, u, '#70758f', '#262a42', 'rgba(215,225,255,0.4)', flash, 5);
-  cracks(ctx, u, [[[-0.9, -1.4], [-0.75, -1.0], [-0.95, -0.7], [-0.7, -0.3]], [[0.95, -1.35], [0.8, -0.95], [1.0, -0.55], [0.75, -0.1]], [[0.1, -1.7], [0.3, -1.45], [0.15, -1.25]], [[-0.3, 0.0], [-0.1, 0.18], [0.3, 0.05]]], lit, exposed ? 1 : 0.85);
+  smoothStonePath(ctx, hump, u);
+  paintStoneBody(ctx, u, '#70758f', '#262a42', 'rgba(215,225,255,0.4)', flash, 5);
+  drawGlowingCracks(ctx, u, [[[-0.9, -1.4], [-0.75, -1.0], [-0.95, -0.7], [-0.7, -0.3]], [[0.95, -1.35], [0.8, -0.95], [1.0, -0.55], [0.75, -0.1]], [[0.1, -1.7], [0.3, -1.45], [0.15, -1.25]], [[-0.3, 0.0], [-0.1, 0.18], [0.3, 0.05]]], lit, exposed ? 1 : 0.85);
   // The hollow chest: a jagged opening with a burning core inside.
   const hole = [];
   for (let k = 0; k < 12; k += 1) {
@@ -218,7 +218,7 @@ function drawTorso(ctx, u, flash, lit, exposed, ruin, t) {
     const r = 0.46 + hash(k, 5) * 0.14;
     hole.push([Math.cos(a) * r, -0.52 + Math.sin(a) * r * 0.95]);
   }
-  jagged(ctx, hole, u);
+  jaggedStonePath(ctx, hole, u);
   const core = ctx.createRadialGradient(0, -0.52 * u, 0.03 * u, 0, -0.52 * u, 0.55 * u);
   core.addColorStop(0, ruin ? '#fff6d0' : '#fffbe0');
   core.addColorStop(0.3, ruin ? '#ffb02a' : exposed ? '#ffb02a' : '#ff7a1a');
@@ -254,9 +254,9 @@ function drawTorso(ctx, u, flash, lit, exposed, ruin, t) {
 
 function drawHead(ctx, u, flash, ruin, exposed, lit) {
   const head = [[-0.58, -1.55], [-0.66, -1.95], [-0.5, -2.2], [-0.4, -2.12], [-0.34, -2.55], [-0.12, -2.22], [0.04, -2.7], [0.2, -2.24], [0.4, -2.46], [0.5, -2.12], [0.66, -1.92], [0.55, -1.55], [0.28, -1.38], [-0.04, -1.5], [-0.3, -1.38]];
-  jagged(ctx, head, u);
-  stone(ctx, u, '#7a7f98', '#2a2e48', 'rgba(220,228,255,0.45)', flash, 5);
-  cracks(ctx, u, [[[-0.5, -2.0], [-0.3, -2.15], [-0.2, -2.0]], [[0.35, -2.0], [0.5, -1.8], [0.4, -1.6]]], lit, 0.8);
+  jaggedStonePath(ctx, head, u);
+  paintStoneBody(ctx, u, '#7a7f98', '#2a2e48', 'rgba(220,228,255,0.45)', flash, 5);
+  drawGlowingCracks(ctx, u, [[[-0.5, -2.0], [-0.3, -2.15], [-0.2, -2.0]], [[0.35, -2.0], [0.5, -1.8], [0.4, -1.6]]], lit, 0.8);
   // The eye slit.
   ctx.beginPath();
   ctx.moveTo(-0.42 * u, -1.86 * u);
@@ -314,7 +314,7 @@ export function drawColossus(ctx, u, t, st) {
   drawArm(ctx, u, [[1.4, -1.2, 0.5], [1.95, -1.6 + (1 - smash) * 0.5, 0.42], [1.95, -2.15 + (1 - smash) * 0.9, 0.38], [1.62, -2.65 + (1 - smash) * 1.35, 0.62]], 1, flash, lit, exposed);
   drawTorso(ctx, u, flash, lit, exposed, ruin, t);
   mossAndRubble(ctx, u, [[-1.2, -1.5, 0.22], [1.15, -1.55, 0.2], [-0.4, -1.58, 0.14], [0.7, -1.52, 0.12]], flash);
-  for (const [x, y, s, seed] of [[-1.05, -1.7, 4, 1], [1.0, -1.72, 5, 2], [-1.55, -1.45, 3, 3], [0.35, -1.85, 3, 4]]) rock(ctx, x * u, y * u, s + u * 0.03, seed);
+  for (const [x, y, s, seed] of [[-1.05, -1.7, 4, 1], [1.0, -1.72, 5, 2], [-1.55, -1.45, 3, 3], [0.35, -1.85, 3, 4]]) paintRock(ctx, x * u, y * u, s + u * 0.03, seed);
   drawHead(ctx, u, flash, ruin, exposed, lit);
   if (!ruin) {
     for (let i = 0; i < PLATES.length; i += 1) {

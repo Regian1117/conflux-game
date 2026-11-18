@@ -196,11 +196,11 @@ export function drawToolBar(ctx, game, time) {
   drawComboBadge(ctx, game);
   let x = 1052;
   const y = BAR_Y + 10;
-  x = keycap(ctx, 'SPACE', x, y, 66);
+  x = drawKeycap(ctx, 'SPACE', x, y, 66);
   drawText(ctx, 'open rift', x + 2, y + 22, { size: 13, color: '#dfe7ff', weight: 700, outline: 0 });
   x = 1052;
   const small = (key, label) => {
-    x = keycap(ctx, key, x, y + 48, 28);
+    x = drawKeycap(ctx, key, x, y + 48, 28);
     drawText(ctx, label, x + 1, y + 70, { size: 12, color: '#dfe7ff', weight: 700, outline: 0 });
     x += ctx.measureText(label).width + 10;
   };
@@ -333,7 +333,7 @@ function drawFrames(ctx, game) {
 }
 
 /** One drawn keycap with its label at (x, y); returns the x where the next item may start. */
-function keycap(ctx, label, x, y, w) {
+function drawKeycap(ctx, label, x, y, w) {
   const h = 30;
   ctx.beginPath();
   ctx.roundRect(x, y + 3, w, h, 7);
@@ -360,7 +360,7 @@ export function drawKeyBar(ctx) {
   ctx.fillRect(0, H - 48, W, 48);
   let x = 14;
   const group = (keys, label) => {
-    for (const k of keys) x = keycap(ctx, k, x, y, k.length > 2 ? 18 + k.length * 10 : 32);
+    for (const k of keys) x = drawKeycap(ctx, k, x, y, k.length > 2 ? 18 + k.length * 10 : 32);
     drawText(ctx, label, x + 2, y + 22, { size: 15, color: '#dfe7ff', weight: 700, outline: 0 });
     x += ctx.measureText(label).width + 22;
   };

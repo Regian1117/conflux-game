@@ -18,7 +18,7 @@ export const TITLE_BUTTON = { x: 922, y: 708, w: 318, h: 72 };
 const GRADE_COLORS = { S: '#ffd24a', A: '#6dffb0', B: '#22c3ff', C: '#ff9a5a' };
 
 /** Gold motes rising through the frame, and confetti: positions come from the clock only. */
-function risingGold(ctx, time, count) {
+function drawRisingGold(ctx, time, count) {
   ctx.globalCompositeOperation = 'lighter';
   for (let k = 0; k < count; k += 1) {
     const x = ((k * 7919) % W) + Math.sin(time * 1.2 + k) * 14;
@@ -33,7 +33,7 @@ function risingGold(ctx, time, count) {
 }
 
 /** Soft golden rays fanning out from (x, y), slowly turning: wedges that fade with distance. */
-function radialRays(ctx, x, y, time, count, length) {
+function drawRadialRays(ctx, x, y, time, count, length) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (let k = 0; k < count; k += 1) {
@@ -104,7 +104,7 @@ function winBackdrop(ctx, time) {
   ctx.beginPath();
   ctx.ellipse(W / 2 + 40, 690, 520, 70, 0, 0, 6.283);
   ctx.fill();
-  radialRays(ctx, chestX, chestY, time, 22, 760);
+  drawRadialRays(ctx, chestX, chestY, time, 22, 760);
   ctx.save();
   ctx.translate(W / 2 + 40, 520);
   ctx.rotate(-Math.PI / 2 + 0.06);
@@ -118,7 +118,7 @@ function winBackdrop(ctx, time) {
   ctx.fillRect(chestX - 160, chestY - 160, 320, 320);
   ctx.globalCompositeOperation = 'source-over';
   [[120, 640, 0.4, 0], [330, 735, -0.3, 1], [1090, 700, 0.6, 2], [940, 640, -0.5, 3], [60, 400, 1.2, 1], [1200, 330, -0.9, 0], [200, 250, 0.2, 2], [1120, 560, 0.1, 3]].forEach(([x, y, angle, k]) => fallenPlate(ctx, x, y, angle, 0.9, PLATES[k].color));
-  risingGold(ctx, time, 150);
+  drawRisingGold(ctx, time, 150);
 }
 
 /** Backdrop for a loss: the Core Crystal in pieces under a red glow. */
@@ -155,7 +155,7 @@ function loseBackdrop(ctx, time) {
   }
 }
 
-function panel(ctx, x, y, w, h, color) {
+function drawResultsPanel(ctx, x, y, w, h, color) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 14);
   ctx.fillStyle = 'rgba(8,10,18,0.42)';
@@ -166,8 +166,8 @@ function panel(ctx, x, y, w, h, color) {
   drawFiligree(ctx, x + 2, y + 2, w - 4, h - 4);
 }
 
-function statTile(ctx, x, y, label, value, color, sub) {
-  panel(ctx, x, y, 202, 90, color);
+function drawStatTile(ctx, x, y, label, value, color, sub) {
+  drawResultsPanel(ctx, x, y, 202, 90, color);
   drawText(ctx, label, x + 101, y + 24, { size: 13, color: '#c9d2e8', align: 'center', outline: 0 });
   drawText(ctx, value, x + 101, sub ? y + 61 : y + 68, { size: value.length > 8 ? 26 : 38, color, align: 'center' });
   if (sub) drawText(ctx, sub, x + 101, y + 81, { size: 13, color: '#c9d2e8', align: 'center', outline: 0, weight: 700 });
@@ -175,7 +175,7 @@ function statTile(ctx, x, y, label, value, color, sub) {
 
 /** The feats earned this run (the rest dimmed). */
 function featsPanel(ctx, game, won, x, y, w, h, accent) {
-  panel(ctx, x, y, w, h, accent);
+  drawResultsPanel(ctx, x, y, w, h, accent);
   const earned = FEATS.filter((f) => f.test(game, won)).length;
   drawText(ctx, 'FEATS', x + 20, y + 36, { size: 26, color: '#ffffff' });
   drawText(ctx, `${earned}/${FEATS.length} earned`, x + w - 18, y + 34, { size: 16, color: '#ffe9a8', align: 'right', outline: 0 });
@@ -206,9 +206,39 @@ function featsPanel(ctx, game, won, x, y, w, h, accent) {
   });
 }
 
+/** The last five runs, newest first: losses in red with a cracked core, wins in gold. */
+function historyPanel(ctx, runs, x, y, w, h, accent) {
+  drawResultsPanel(ctx, x, y, w, h, accent);
+  drawText(ctx, 'RUN HISTORY', x + 16, y + 34, { size: 22, color: '#ffffff' });
+  drawText(ctx, `last ${Math.max(runs.length, 1)} runs`, x + 16, y + 56, { size: 14, color: '#c9d2e8', outline: 0, weight: 700 });
+  runs.slice(0, 5).forEach((run, i) => {
+    const ry = y + 21 + i * 17;
+    const color = run.won ? '#ffd24a' : '#ff6a7a';
+    const cx = x + 184;
+    ctx.beginPath();
+    ctx.arc(cx, ry - 5, 6.5, 0, 6.283);
+    ctx.fillStyle = run.won ? '#4a3708' : '#3a0c14';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    if (!run.won) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 1, ry - 11);
+      ctx.lineTo(cx + 2, ry - 6);
+      ctx.lineTo(cx - 2, ry - 4);
+      ctx.lineTo(cx + 1, ry + 1);
+      ctx.stroke();
+    }
+    const text = run.won ? `Run ${run.n} \u00b7 MASTERED \u00b7 grade ${run.grade}` : `Run ${run.n} \u00b7 THE CORE SHATTERS at Rift ${run.rift} \u00b7 grade ${run.grade}`;
+    drawText(ctx, text, x + 200, ry, { size: 15, color, outline: 2 });
+    drawText(ctx, formatNumber(run.score), x + w - 16, ry, { size: 15, color: '#ffe9a8', align: 'right', outline: 2 });
+  });
+}
+
 /** A small bar chart of the score earned in each rift. */
 function riftChart(ctx, game, x, y, w, h, accent) {
-  panel(ctx, x, y, w, h, accent);
+  drawResultsPanel(ctx, x, y, w, h, accent);
   drawText(ctx, 'SCORE PER RIFT', x + 18, y + 32, { size: 20, color: '#ffffff' });
   const scores = Array.from({ length: RIFT_COUNT }, (_, i) => game.stats.riftScores[i] ?? 0);
   const max = Math.max(1, ...scores);
@@ -229,7 +259,7 @@ function riftChart(ctx, game, x, y, w, h, accent) {
 }
 
 /** The ornate grade medallion: gold rings, rays and the grade (or the rift reached). */
-function medallion(ctx, cx, cy, label, color, grade, time) {
+function drawGradeMedallion(ctx, cx, cy, label, color, grade, time) {
   ctx.globalCompositeOperation = 'lighter';
   const glow = ctx.createRadialGradient(cx, cy, 30, cx, cy, 190);
   glow.addColorStop(0, `${color}88`);
@@ -272,7 +302,7 @@ function medallion(ctx, cx, cy, label, color, grade, time) {
 /** Horizontal bars of how often each reaction fired, in its element colour. */
 function reactionChart(ctx, stats, x, y, w, h, accent) {
   const rowGap = (h - 64) / 6;
-  panel(ctx, x, y, w, h, accent);
+  drawResultsPanel(ctx, x, y, w, h, accent);
   drawText(ctx, 'REACTIONS USED', x + 20, y + 36, { size: 22, color: '#ffffff' });
   const by = stats.byReaction;
   const rows = [
@@ -297,7 +327,7 @@ function reactionChart(ctx, stats, x, y, w, h, accent) {
   });
 }
 
-function button(ctx, b, label, top, bottom, accent, time) {
+function drawResultsButton(ctx, b, label, top, bottom, accent, time) {
   const pulse = 0.5 + 0.5 * Math.sin(time * 4);
   ctx.save();
   ctx.shadowColor = accent;
@@ -335,10 +365,10 @@ export function drawResults(ctx, game, bests, won, time) {
   const grade = won ? gradeFor(game) : null;
   const label = won ? grade : `${Math.max(1, game.riftNum)}/${RIFT_COUNT}`;
   const medal = won ? GRADE_COLORS[grade] : '#ff7a8a';
-  medallion(ctx, 160, 336, label, medal, Boolean(won), time);
+  drawGradeMedallion(ctx, 160, 336, label, medal, Boolean(won), time);
   drawText(ctx, won ? 'GRADE' : 'RIFT REACHED', 160, 490, { size: 20, color: '#ffffff', align: 'center' });
 
-  panel(ctx, 326, 222, 250, 230, accent);
+  drawResultsPanel(ctx, 326, 222, 250, 230, accent);
   drawText(ctx, 'SCORE', 451, 258, { size: 20, color: '#c9d2e8', align: 'center', outline: 0 });
   drawText(ctx, formatNumber(game.score), 451, 332, { size: formatNumber(game.score).length > 6 ? 52 : 62, color: '#ffe9a8', align: 'center' });
   const isBest = game.score >= bests.score && game.score > 0;
@@ -366,17 +396,14 @@ export function drawResults(ctx, game, bests, won, time) {
   riftChart(ctx, game, 30, 500, 380, 194, accent);
   const tiles = [
     ['BEST CHAIN', `x${stats.bestChain}`, '#ffe23a'],
-    ['RIFTS CLEARED', `${stats.riftsCleared ?? 0}/${RIFT_COUNT}`, '#6dffb0'],
     ['CREATURES DISSOLVED', formatNumber(stats.kills), '#ff9a5a'],
-    ['REACTIONS TRIGGERED', formatNumber(stats.reactions), '#22c3ff'],
     ['TIME', formatTime(game.t), '#ffffff'],
     [won ? 'CORE HEALTH LEFT' : 'CHAIN RECORD', won ? `${Math.ceil(game.core.hp)}%` : `x${Math.max(bests.chain, stats.bestChain)}`, '#6ff0ff'],
-    ['CORE HITS TAKEN', String(stats.coreHits), '#ff7a8a', `${Math.round(stats.shieldAbsorbed)} absorbed`],
-    ['OMEN', omen.name.split(' ')[0], omen.color, diff],
   ];
-  tiles.forEach((t, i) => statTile(ctx, 426 + (i % 4) * 210, 504 + Math.floor(i / 4) * 100, t[0], t[1], t[2], t[3]));
+  tiles.forEach((t, i) => drawStatTile(ctx, 426 + i * 210, 500, t[0], t[1], t[2], t[3]));
+  historyPanel(ctx, game.history ?? [], 426, 598, 814, 98, accent);
 
-  button(ctx, AGAIN_BUTTON, won ? 'PLAY AGAIN (R)' : 'TRY AGAIN (R)', won ? '#ffd24a' : '#ff6a7a', won ? '#e8780f' : '#c4203a', accent, time);
-  button(ctx, SEED_BUTTON, 'SAME SEED (S)', '#8dffc0', '#1f9a5a', '#6dffb0', time);
-  button(ctx, TITLE_BUTTON, 'TITLE (T)', '#9ad4ff', '#4a7fd0', '#6aa8ff', time);
+  drawResultsButton(ctx, AGAIN_BUTTON, won ? 'PLAY AGAIN (R)' : 'TRY AGAIN (R)', won ? '#ffd24a' : '#ff6a7a', won ? '#e8780f' : '#c4203a', accent, time);
+  drawResultsButton(ctx, SEED_BUTTON, 'SAME SEED (S)', '#8dffc0', '#1f9a5a', '#6dffb0', time);
+  drawResultsButton(ctx, TITLE_BUTTON, 'TITLE (T)', '#9ad4ff', '#4a7fd0', '#6aa8ff', time);
 }

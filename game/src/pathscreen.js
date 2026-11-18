@@ -2,7 +2,7 @@
 // (completed path glowing gold, the current node pulsing, the reachable branches ahead), a tooltip
 // for the hovered node, the collected boons, the run seed, difficulty and rerolls, and on the
 // right the post-rift boon pick with rarity colours and a REROLL button. Also the shrine dialog.
-import { DIFFICULTIES, FONT, H, RIFT_COUNT, W } from './config.js';
+import { DIFFICULTIES, FONT, H, PLATES, RIFT_COUNT, W } from './config.js';
 import { BOONS, RARITY, REROLL_COST } from './boons.js';
 import { NODE_TYPES, nodeById, nodePosition, reachableNodes } from './path.js';
 import { drawFiligree, drawGlyph, drawGlyphTile, GLYPH_COLORS } from './glyphs.js';
@@ -192,7 +192,7 @@ function tooltip(ctx, node) {
   const p = nodePosition(node.row, node.index, node.count);
   const type = NODE_TYPES[node.type];
   const w = 330;
-  const x = Math.min(790 - w, Math.max(40, p.x - w / 2));
+  const x = Math.min(664 - w, Math.max(40, p.x - w / 2));
   const top = 552;
   ctx.strokeStyle = type.color;
   ctx.lineWidth = 3;
@@ -227,6 +227,35 @@ function tooltip(ctx, node) {
     ctx.stroke();
     drawGlyph(ctx, glyph, ix + 26, top + 101, 7, GLYPH_COLORS[glyph], 2);
     drawText(ctx, weak, ix + 42, top + 106, { size: 12, color: GLYPH_COLORS[glyph], outline: 0 });
+  });
+}
+
+/** A small preview of the final boss under its node: silhouette, four plates and the reaction order. */
+function bossPreview(ctx) {
+  const x = 674;
+  const y = 450;
+  ctx.fillStyle = 'rgba(8,10,18,0.96)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, 134, 152, 10);
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#c58aff';
+  ctx.stroke();
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(728, 440);
+  ctx.lineTo(728, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  drawText(ctx, 'HOLLOW COLOSSUS', x + 67, y + 18, { size: 13, color: '#c58aff', align: 'center', outline: 0 });
+  drawCreatureSprite(ctx, 'colossus', x + 67, y + 66, 13, 0, {});
+  PLATES.forEach((plate, i) => {
+    const ry = y + 100 + i * 12;
+    ctx.fillStyle = plate.color;
+    ctx.beginPath();
+    ctx.arc(x + 16, ry - 4, 4.5, 0, 6.283);
+    ctx.fill();
+    drawText(ctx, `${i + 1} ${plate.need}`, x + 28, ry, { size: 11, color: plate.color, outline: 0 });
   });
 }
 
@@ -341,6 +370,7 @@ export function drawPath(ctx, game, time, ui = {}) {
     drawText(ctx, row === RIFT_COUNT ? 'RIFT 7' : `RIFT ${row}`, p.x, 184, { size: 14, color: row <= game.route.length ? '#ffd24a' : '#8f98ad', align: 'center', outline: 0 });
   }
   edges(ctx, game, time);
+  bossPreview(ctx);
   const hovered = ui.hoverNode ? nodeById(game.map, ui.hoverNode) : null;
   for (const node of game.map.flat()) drawNode(ctx, game, node, time, hovered && hovered.id === node.id);
   if (hovered) tooltip(ctx, hovered);

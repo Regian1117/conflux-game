@@ -12,6 +12,7 @@ import { brushCardAt, drawHud } from './hud.js';
 import { OVERLAY_OFFSET, drawHelp, drawPause } from './screens.js';
 import { drawTitle, titleHit } from './menus.js';
 import { OMENS, OMEN_KEY } from './omens.js';
+import { recordRunHistory } from './history.js';
 import { SEED_BUTTON, TITLE_BUTTON, drawResults } from './results.js';
 import { drawPath, drawShrine, pathBoonAt, pathNodeAt, rerollHit, shrineChoiceAt } from './pathscreen.js';
 import { takeBoon } from './boons.js';
@@ -60,7 +61,7 @@ function fitCanvas() {
  * Paint one complete frame for the current screen. `ui` carries what the screens need beyond the
  * game: { difficulty, sameSeed, hit } for the title, { hoverNode, hoverBoon } for the path.
  */
-function paint(game, screen, bests, time, ui = {}) {
+function paintScreen(game, screen, bests, time, ui = {}) {
   if (screen === 'win' || screen === 'lose') {
     drawResults(ctx, game, bests, screen === 'win', time);
     return;
@@ -94,7 +95,7 @@ function runShot(name) {
   const scene = stageShot(name, baseSeed);
   let painted = 0;
   function frame() {
-    paint(scene.game, scene.screen, scene.bests, scene.time, { difficulty: scene.difficulty ?? 1, omen: scene.omen ?? 0, sameSeed: false, seed: scene.game.seed, hit: null, hoverNode: scene.hoverNode, hoverBoon: scene.hoverBoon });
+    paintScreen(scene.game, scene.screen, scene.bests, scene.time, { difficulty: scene.difficulty ?? 1, omen: scene.omen ?? 0, sameSeed: false, seed: scene.game.seed, hit: null, hoverNode: scene.hoverNode, hoverBoon: scene.hoverBoon });
     painted += 1;
     if (painted < 2) requestAnimationFrame(frame);
     else window.__shotReady = true;
@@ -134,6 +135,7 @@ function runGame() {
   }
 
   function recordRun() {
+    game.history = recordRunHistory(game, game.phase === 'won');
     if (game.score > bests.score) {
       bests.score = game.score;
       writeNumber(BEST_KEY, bests.score);
@@ -311,7 +313,7 @@ function runGame() {
     }
     const intensity = screen === 'title' || screen === 'help' ? 0.25 : screen === 'path' ? 0.15 : game.boss ? 1 : 0.2 + (game.riftNum / 7) * 0.65;
     updateMusic(screen === 'pause' ? 0 : intensity);
-    paint(showing, screen, bests, now / 1000, ui);
+    paintScreen(showing, screen, bests, now / 1000, ui);
   }
 
   document.addEventListener('visibilitychange', () => {

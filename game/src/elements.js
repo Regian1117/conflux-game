@@ -35,18 +35,18 @@ export const isBrushElement = (type) => type >= FIRE && type <= STORM;
 
 const rules = new Map();
 /** Rule: a cell of type `a` beside a cell of type `b` becomes `na`, and `b` becomes `nb`. */
-function rule(a, b, na, nb, name) {
+function defineReactionRule(a, b, na, nb, name) {
   rules.set(a * 16 + b, { a: na, b: nb, name });
   rules.set(b * 16 + a, { a: nb, b: na, name });
 }
-rule(FIRE, WATER, STEAM, STEAM, 'STEAM');
-rule(FIRE, EARTH, LAVA, LAVA, 'LAVA');
-rule(WATER, STORM, CHARGED, CHARGED, 'SHOCK');
-rule(EARTH, STORM, MAGNET, MAGNET, 'MAGNET');
-rule(STEAM, STORM, CLOUD, CLOUD, 'STORMSTEAM');
-rule(LAVA, WATER, EARTH, STEAM, 'QUENCH');
-rule(FIRE, ICE, WATER, WATER, 'MELT');
-rule(STORM, ICE, EMPTY, EMPTY, 'SHATTER');
+defineReactionRule(FIRE, WATER, STEAM, STEAM, 'STEAM');
+defineReactionRule(FIRE, EARTH, LAVA, LAVA, 'LAVA');
+defineReactionRule(WATER, STORM, CHARGED, CHARGED, 'SHOCK');
+defineReactionRule(EARTH, STORM, MAGNET, MAGNET, 'MAGNET');
+defineReactionRule(STEAM, STORM, CLOUD, CLOUD, 'STORMSTEAM');
+defineReactionRule(LAVA, WATER, EARTH, STEAM, 'QUENCH');
+defineReactionRule(FIRE, ICE, WATER, WATER, 'MELT');
+defineReactionRule(STORM, ICE, EMPTY, EMPTY, 'SHATTER');
 
 /** The reaction between two element types, or undefined when they do not react. */
 export function ruleFor(a, b) {
