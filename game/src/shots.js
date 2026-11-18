@@ -260,10 +260,10 @@ function stageWin(seed) {
   // A plausible run history: this win (run 8) after earlier losses and wins.
   game.history = [
     { n: 8, won: true, rift: 7, grade: gradeFor(game), score: Math.round(game.score) },
-    { n: 7, won: false, rift: 6, grade: 'B', score: 41200 },
-    { n: 6, won: true, rift: 7, grade: 'B', score: 51000 },
-    { n: 5, won: false, rift: 3, grade: 'D', score: 14700 },
-    { n: 4, won: false, rift: 5, grade: 'C', score: 29800 },
+    { n: 7, won: false, rift: 5, grade: 'C', score: 21480, killer: 'ram' },
+    { n: 6, won: true, rift: 7, grade: 'B', score: 51000, killer: null },
+    { n: 5, won: false, rift: 3, grade: 'D', score: 14700, killer: 'golem' },
+    { n: 4, won: false, rift: 6, grade: 'B', score: 38200, killer: 'wraith' },
   ];
   return { game, screen: 'win', bests: { score: previous, chain: 19 }, time: game.t };
 }

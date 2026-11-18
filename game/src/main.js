@@ -13,7 +13,7 @@ import { OVERLAY_OFFSET, drawHelp, drawPause } from './screens.js';
 import { drawTitle, titleHit } from './menus.js';
 import { OMENS, OMEN_KEY } from './omens.js';
 import { recordRunHistory } from './history.js';
-import { SEED_BUTTON, TITLE_BUTTON, drawResults } from './results.js';
+import { drawResults, resultsButtons } from './results.js';
 import { drawPath, drawShrine, pathBoonAt, pathNodeAt, rerollHit, shrineChoiceAt } from './pathscreen.js';
 import { takeBoon } from './boons.js';
 import { createBot, botStep } from './autopilot.js';
@@ -254,8 +254,9 @@ function runGame() {
         const card = brushCardAt(click.x, click.y);
         if (card >= 0) selectBrush(game, card);
       } else if ((screen === 'win' || screen === 'lose') && performance.now() - endedAt > 900) {
-        const b = TITLE_BUTTON;
-        const s = SEED_BUTTON;
+        const buttons = resultsButtons(game, screen === 'win');
+        const b = buttons.title;
+        const s = buttons.seed;
         if (click.x >= b.x && click.x < b.x + b.w && click.y >= b.y && click.y < b.y + b.h) screen = 'title';
         else if (click.x >= s.x && click.x < s.x + s.w && click.y >= s.y && click.y < s.y + s.h) newRun(true);
         else newRun();

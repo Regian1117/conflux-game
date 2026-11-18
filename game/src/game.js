@@ -45,7 +45,7 @@ export function createGame(seed, difficulty = 1, omen = 0) {
     core: { hp: CORE.maxHp, shield: 0, hitFlash: 0 },
     score: 0,
     chain: { count: 0, timer: 0, best: 0, lastText: -9, lastGain: -9, kinds: new Set() },
-    stats: { shieldAbsorbed: 0, byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {}, riftShocks: 0, maxShocks: 0, riftHits: 0, cleanRifts: 0, plateResets: 0, riftScores: [], lastScore: 0 },
+    stats: { shieldAbsorbed: 0, byReaction: {}, kills: 0, reactions: 0, bestChain: 0, painted: 0, leaks: 0, coreHits: 0, byKind: {}, riftShocks: 0, maxShocks: 0, riftHits: 0, cleanRifts: 0, plateResets: 0, riftScores: [], lastScore: 0, coreDamageBy: {} },
     boons: {},
     mods: {},
     rift: null,

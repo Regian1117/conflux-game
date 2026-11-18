@@ -132,7 +132,7 @@ function explodeBeetle(game, c) {
   addText(game.fx, px, py - 20, wiped > 0 ? 'OVERLOAD!' : 'BOOM', { color: '#ffe23a', size: 28, life: 1 });
   addShake(game.fx, 8);
   sfx.strike();
-  if (Math.hypot(c.x - (CORE.col + 0.5), c.y - (CORE.row + 0.5)) < 3.8) damageCore(game, KINDS.beetle.core);
+  if (Math.hypot(c.x - (CORE.col + 0.5), c.y - (CORE.row + 0.5)) < 3.8) damageCore(game, KINDS.beetle.core, 'beetle');
   c.hp = 0;
   c.dead = true;
 }
@@ -283,7 +283,7 @@ export function updateCreatures(game, dt) {
 
     // Reaching the Core.
     if (!kind.boss && coreDistance(c) < CORE.hitRadius + kind.r * 0.3) {
-      damageCore(game, kind.core);
+      damageCore(game, kind.core, c.kind);
       game.stats.leaks += 1;
       c.dead = true;
     }

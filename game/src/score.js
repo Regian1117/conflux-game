@@ -43,7 +43,7 @@ export function tickChain(game, dt) {
 }
 
 /** Hit the Core Crystal; the shield soaks damage first. */
-export function damageCore(game, amount) {
+export function damageCore(game, amount, source = null) {
   const core = game.core;
   let rest = amount;
   if (core.shield > 0) {
@@ -66,6 +66,7 @@ export function damageCore(game, amount) {
   }
   core.hitFlash = 0.5;
   burst(game.fx, 'spark', px + CELL / 2 - 10, py + CELL / 2 - 10, 14, ['#6ff0ff', '#ffffff', '#b0f8ff']);
+  if (source) game.stats.coreDamageBy[source] = (game.stats.coreDamageBy[source] ?? 0) + amount;
   game.stats.coreHits += 1;
   game.stats.riftHits += 1;
 }

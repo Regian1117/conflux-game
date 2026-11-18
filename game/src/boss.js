@@ -92,7 +92,7 @@ export function updateBoss(game, dt) {
     boss.crushTimer -= dt;
     if (boss.crushTimer <= 0) {
       boss.crushTimer = 1.6;
-      damageCore(game, 35);
+      damageCore(game, 35, 'colossus');
     }
   }
 }
